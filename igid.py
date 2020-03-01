@@ -5,19 +5,22 @@ import random
 
 # actual size of the window
 SCREEN_WIDTH = 80
-SCREEN_HEIGHT = 50
+SCREEN_HEIGHT = 52
+
+MSG_X = 2
+MSG_WIDTH = SCREEN_WIDTH - 4
+MSG_HEIGHT = 5
 
 # map size
 MAP_WIDTH = 80
 MAP_HEIGHT = 43
+MAP_Y = MSG_HEIGHT
 
 # GUI
-PANEL_HEIGHT = 7
+PANEL_HEIGHT = 4
 BAR_WIDTH = 20
 PANEL_Y = SCREEN_HEIGHT - PANEL_HEIGHT
-MSG_X = 2
-MSG_WIDTH = SCREEN_WIDTH - 4
-MSG_HEIGHT = PANEL_HEIGHT - 1
+
 INVENTORY_WIDTH = 50
 CHARACTER_SCREEN_WIDTH = 30
 LEVEL_SCREEN_WIDTH = 40
@@ -355,15 +358,16 @@ def render_all():
     player.draw()
 
     # blit the contents of "con" to the root console and present it
-    libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
+    libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, MAP_Y)
 
     # prepare to render the GUI panel
     panel.clear(bg=libtcod.black)
+    msg_panel.clear(bg=libtcod.black)
 
     # print the game messages, one line at a time
-    m_y = 1
+    m_y = 0
     for (line, color) in game_msgs:
-        con.print(MSG_X, m_y, line, color)
+        msg_panel.print(MSG_X, m_y, line, color)
         m_y += 1
 
     # show the player's stats
@@ -376,6 +380,7 @@ def render_all():
 
     # blit the contents of "panel" to the root console
     libtcod.console_blit(panel, 0, 0, SCREEN_WIDTH, PANEL_HEIGHT, 0, 0, PANEL_Y)
+    libtcod.console_blit(msg_panel, 0, 0, SCREEN_WIDTH, MSG_HEIGHT, 0, 0, 0)
 
 
 def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
@@ -549,13 +554,14 @@ def is_blocked(x, y):
 #############################################
 libtcod.console_set_custom_font('arial10x10.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
 root = libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, "guess I'll die", False)
+msg_panel = libtcod.console_new(SCREEN_WIDTH, MSG_HEIGHT)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 
 img = libtcod.image_load('gidSmall.png')
 while not libtcod.console_is_window_closed():
     # con.draw_rect(0, 0, SCREEN_WIDTH, SCREEN_WIDTH, True, fg=libtcod.white, bg=libtcod.white)
-    libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 0)
+    libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 1)
     # show the game's title, and some credits!
     title_text = "GUESS I'LL DIE"
     x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))
