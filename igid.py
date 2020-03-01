@@ -14,8 +14,8 @@ MAP_HEIGHT = 43
 PANEL_HEIGHT = 7
 BAR_WIDTH = 20
 PANEL_Y = SCREEN_HEIGHT - PANEL_HEIGHT
-MSG_X = BAR_WIDTH + 2
-MSG_WIDTH = SCREEN_WIDTH - BAR_WIDTH - 2
+MSG_X = 2
+MSG_WIDTH = SCREEN_WIDTH - 4
 MSG_HEIGHT = PANEL_HEIGHT - 1
 INVENTORY_WIDTH = 50
 CHARACTER_SCREEN_WIDTH = 30
@@ -355,10 +355,10 @@ def render_all():
     panel.clear(bg=libtcod.black)
 
     # print the game messages, one line at a time
-    y = 1
+    m_y = 1
     for (line, color) in game_msgs:
-        con.print(MSG_X, y, line, color)
-        y += 1
+        con.print(MSG_X, m_y, line, color)
+        m_y += 1
 
     # show the player's stats
     render_bar(1, 1, BAR_WIDTH, 'HP', player.fighter.hp, player.fighter.max_hp,
@@ -385,7 +385,7 @@ def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
 
     # finally, some centered text with the values
     panel.print(int(x + total_width / 2), y, name + ': ' + str(value) + '/' + str(maximum), libtcod.white,
-                alignment=libtcod.LEFT)
+                alignment=libtcod.CENTER)
 
 
 def get_names_under_mouse():
@@ -563,11 +563,11 @@ while not libtcod.console_is_window_closed():
     # create an off-screen console that represents the menu's window
     # window = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
     # libtcod.console_blit(window, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0, 1.0, 0.7)
-    
+
     break
 
 # create object representing the player
-fighter_component = Fighter(hp=100, defense=1, power=2, xp=0, death_function=player_death)
+fighter_component = Fighter(hp=10, defense=1, power=2, xp=0, death_function=player_death)
 player = Character(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
 
 # the list of objects starting with the player
@@ -575,8 +575,6 @@ objects = [player]
 
 # generate map (at this point it's not drawn to the screen)
 make_map()
-
-message('Game begin', libtcod.red)
 
 # generate field of view map based on level map
 fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
@@ -588,6 +586,9 @@ for y in range(MAP_HEIGHT):
 fov_recompute = True
 game_state = STRING_PLAYING
 player_action = None
+
+message('You are an elderly adventurer, come to the dungeon for one last adventure. Recover the Golden Pigeon of Nyan!', libtcod.white)
+libtcod.console_flush()
 
 # main loop
 while not libtcod.console_is_window_closed():
