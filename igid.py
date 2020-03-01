@@ -37,6 +37,10 @@ STRING_EXIT = 'exit'
 STRING_NO_ACTION = 'didnt-take-turn'
 STRING_PLAYING = 'playing'
 
+# experience and level-ups
+LEVEL_UP_BASE = 200
+LEVEL_UP_FACTOR = 150
+
 # colors
 color_dark_wall = libtcod.Color(0, 0, 100)
 color_dark_ground = libtcod.Color(50, 50, 150)
@@ -49,6 +53,7 @@ WALL_DMG = 10
 game_msgs = []
 inventory = []
 dungeon_level = 1
+stairs = None
 
 
 # player, inventory
@@ -57,13 +62,24 @@ dungeon_level = 1
 class Object:
     # this is a generic object: the player, a monster, an item, the stairs...
     # it's always represented by a character on screen.
-    def __init__(self, x, y, char, name, color, blocks=False):
+    def __init__(self, x, y, char, name, color, blocks=False, item=None, equipment=None):
         self.name = name
         self.blocks = blocks
         self.x = x
         self.y = y
         self.char = char
         self.color = color
+        self.item = item
+        if self.item:  # let the Item component know who owns it
+            self.item.owner = self
+
+        self.equipment = equipment
+        if self.equipment:  # let the Equipment component know who owns it
+            self.equipment.owner = self
+
+            # there must be an Item component for the Equipment component to work properly
+            self.item = Item()
+            self.item.owner = self
 
     def move(self, dx, dy):
         # move by the given amount if not blocked
@@ -92,6 +108,8 @@ class Character(Object):
         if self.fighter:
             fighter.owner = self
 
+        self.level = 1
+
     def get_all_equipped(self):  # returns a list of equipped items
         if self == player:
             equipped_list = []
@@ -102,7 +120,7 @@ class Character(Object):
         else:
             return []  # other objects have no equipment
 
-    def get_equipped_in_slot(slot):  # returns the equipment in a slot, or None if it's empty
+    def get_equipped_in_slot(self, slot):  # returns the equipment in a slot, or None if it's empty
         for obj in inventory:
             if obj.equipment and obj.equipment.slot == slot and obj.equipment.is_equipped:
                 return obj.equipment
@@ -244,7 +262,7 @@ class Equipment:
 
     def equip(self):
         # if the slot is already being used, dequip whatever is there first
-        old_equipment = self.owner.get_equipped_in_slot(self.slot)
+        old_equipment = player.get_equipped_in_slot(self.slot)
         if old_equipment is not None:
             old_equipment.dequip()
 
@@ -442,14 +460,14 @@ def menu(header, options, width):
     window = libtcod.console_new(width, height)
 
     # print the header, with auto-wrap
-    con.print_rect(0, 0, width, height, header)
+    window.print_rect(0, 0, width, height, header)
 
     # print all the options
     y = header_height
     letter_index = ord('a')
     for option_text in options:
         text = '(' + chr(letter_index) + ') ' + option_text
-        con.print(0, y, text)
+        window.print(0, y, text)
         y += 1
         letter_index += 1
 
@@ -522,7 +540,68 @@ def handle_keys():
             player.move(1, 0)
             fov_recompute = True
         else:
+            # test for other keys
+            key_char = chr(key.c)
+
+            if key_char == 'g':
+                # pick up an item
+                for object in objects:  # look for an item in the player's tile
+                    if object.x == player.x and object.y == player.y and object.item:
+                        object.item.pick_up()
+                        break
+
+            if key_char == 'i':
+                # show the inventory; if an item is selected, use it
+                chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel.\n')
+                if chosen_item is not None:
+                    chosen_item.use()
+
+            if key_char == 'd':
+                # show the inventory; if an item is selected, drop it
+                chosen_item = inventory_menu('Press the key next to an item to drop it, or any other to cancel.\n')
+                if chosen_item is not None:
+                    chosen_item.drop()
+
+            if key_char == 'c':
+                # show character information
+                level_up_xp = LEVEL_UP_BASE + player.level * LEVEL_UP_FACTOR
+                msgbox(
+                    'Character Information\n\nLevel: ' + str(player.level) + '\nExperience: ' + str(player.fighter.xp) +
+                    '\nExperience to level up: ' + str(level_up_xp) + '\n\nMaximum HP: ' + str(player.fighter.max_hp) +
+                    '\nAttack: ' + str(player.fighter.power) + '\nDefense: ' + str(player.fighter.defense),
+                    CHARACTER_SCREEN_WIDTH)
+
+            if key_char == '<':
+                # go down stairs, if the player is on them
+                if stairs.x == player.x and stairs.y == player.y:
+                    next_level()
+
             return STRING_NO_ACTION
+
+
+def next_level():
+    # advance to the next level
+    global dungeon_level
+    message('You take a moment to rest, and recover your strength.', libtcod.light_violet)
+    player.fighter.heal(player.fighter.max_hp / 2)  # heal the player by 50%
+
+    dungeon_level += 1
+    message('After a rare moment of peace, you descend deeper into the heart of the dungeon...', libtcod.red)
+    make_map()  # create a fresh new level!
+    initialize_fov()
+
+
+def initialize_fov():
+    global fov_recompute, fov_map
+    fov_recompute = True
+
+    # create the FOV map, according to the generated map
+    fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
+    for y in range(MAP_HEIGHT):
+        for x in range(MAP_WIDTH):
+            libtcod.map_set_properties(fov_map, x, y, not map[x][y].block_sight, not map[x][y].blocked)
+
+    libtcod.console_clear(con)  # unexplored areas start black (which is the default background color)
 
 
 def player_death(pc):
@@ -567,7 +646,7 @@ while not libtcod.console_is_window_closed():
     x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))
     y = SCREEN_HEIGHT - 17
     con.print(x, y, title_text, libtcod.white, libtcod.black, libtcod.BKGND_OVERLAY)
-    con.blit(root, x-1, y-1, x-1, y-1, len(title_text) + 2, 3)
+    con.blit(root, x - 1, y - 1, x - 1, y - 1, len(title_text) + 2, 3)
     libtcod.console_flush(clear_color=libtcod.white)
     key = libtcod.console_wait_for_keypress(True)
     con.clear()
@@ -581,6 +660,12 @@ while not libtcod.console_is_window_closed():
 # create object representing the player
 fighter_component = Fighter(hp=10, defense=1, power=2, xp=0, death_function=player_death)
 player = Character(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
+
+equipment_component = Equipment(slot='right hand', power_bonus=1)
+obj = Object(0, 0, '-', 'rolled-up newspaper', libtcod.light_grey, equipment=equipment_component)
+inventory.append(obj)
+equipment_component.equip()
+obj.always_visible = True
 
 # the list of objects starting with the player
 objects = [player]
@@ -599,7 +684,8 @@ fov_recompute = True
 game_state = STRING_PLAYING
 player_action = None
 
-message('You are an elderly adventurer, come to the dungeon for one last adventure. Recover the Golden Pigeon of Nyan!', libtcod.white)
+message('You are an elderly adventurer, come to the dungeon for one last quest. Recover the Golden Pigeon of Nyan!',
+        libtcod.white)
 libtcod.console_flush()
 
 # main loop
