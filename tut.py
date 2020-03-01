@@ -19,7 +19,6 @@ MAP_HEIGHT = 43
 # sizes and coordinates relevant for the GUI
 BAR_WIDTH = 20
 PANEL_HEIGHT = 7
-PANEL_HEIGHT = 7
 PANEL_Y = SCREEN_HEIGHT - PANEL_HEIGHT
 MSG_X = BAR_WIDTH + 2
 MSG_WIDTH = SCREEN_WIDTH - BAR_WIDTH - 2
@@ -1136,16 +1135,17 @@ def play_game():
 
 
 def main_menu(con):
-    img = libtcod.image_load('bg.png')
+    img = libtcod.image_load('gidSmall.png')
 
     while not libtcod.console_is_window_closed():
         # show the background image, at twice the regular console resolution
-        libtcod.image_blit_2x(img, 0, 0, 0)
+        libtcod.image_blit_2x(img, 0, 7, 0)
 
         # show the game's title, and some credits!
-        con.set_fg(libtcod.white)
+        # con.set_fg(libtcod.white)
         con.print(int(SCREEN_WIDTH / 2), int(SCREEN_HEIGHT / 2 - 4), "TOMBS OF THE ANCIENT KINGS", libtcod.white)
         con.print(int(SCREEN_WIDTH / 2), int(SCREEN_HEIGHT - 2), 'By Jotaf', libtcod.light_yellow)
+        # libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
 
         # show options and wait for the player's choice
         choice = menu('', ['Play a new game', 'Continue last game', 'Quit'], 24)

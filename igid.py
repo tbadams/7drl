@@ -366,7 +366,7 @@ def render_all():
     panel.print(1, 3, 'Dungeon level ' + str(dungeon_level))
 
     # display names of objects under the mouse
-    panel.print(1, 0,  get_names_under_mouse(), bg=libtcod.light_gray)
+    panel.print(1, 0, get_names_under_mouse(), bg=libtcod.light_gray)
 
     # blit the contents of "panel" to the root console
     libtcod.console_blit(panel, 0, 0, SCREEN_WIDTH, PANEL_HEIGHT, 0, 0, PANEL_Y)
@@ -542,9 +542,29 @@ def is_blocked(x, y):
 # Initialization & Main Loop
 #############################################
 libtcod.console_set_custom_font('arial10x10.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
-libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, "guess I'll die", False)
+root = libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, "guess I'll die", False)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
+
+img = libtcod.image_load('gidSmall.png')
+while not libtcod.console_is_window_closed():
+    # con.draw_rect(0, 0, SCREEN_WIDTH, SCREEN_WIDTH, True, fg=libtcod.white, bg=libtcod.white)
+    libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 0)
+    # show the game's title, and some credits!
+    title_text = "GUESS I'LL DIE"
+    x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))
+    y = SCREEN_HEIGHT - 17
+    con.print(x, y, title_text, libtcod.white, libtcod.black, libtcod.BKGND_OVERLAY)
+    con.blit(root, x-1, y-1, x-1, y-1, len(title_text) + 2, 3)
+    libtcod.console_flush(clear_color=libtcod.white)
+    key = libtcod.console_wait_for_keypress(True)
+    con.clear()
+
+    # create an off-screen console that represents the menu's window
+    # window = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
+    # libtcod.console_blit(window, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0, 1.0, 0.7)
+    
+    break
 
 # create object representing the player
 fighter_component = Fighter(hp=100, defense=1, power=2, xp=0, death_function=player_death)
