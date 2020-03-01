@@ -1,6 +1,7 @@
 import tcod as libtcod
 import textwrap
 import math
+import random
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -39,6 +40,8 @@ color_dark_ground = libtcod.Color(50, 50, 150)
 color_light_wall = libtcod.Color(130, 110, 50)
 color_light_ground = libtcod.Color(200, 180, 50)
 
+WALL_DMG = 10
+
 # game state
 game_msgs = []
 inventory = []
@@ -64,6 +67,9 @@ class Object:
         if not is_blocked(self.x + dx, self.y + dy):
             self.x += dx
             self.y += dy
+        elif self is player:
+            message("Ouch! You blunder into a wall.", libtcod.orange)
+            player.fighter.take_damage(random.randint(1, WALL_DMG))
 
     def draw(self):
         if libtcod.map_is_in_fov(fov_map, self.x, self.y):
