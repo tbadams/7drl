@@ -54,6 +54,11 @@ game_msgs = []
 inventory = []
 dungeon_level = 1
 stairs = None
+player = None
+objects = []
+fov_recompute = None
+game_state = None
+fov_map = None
 
 
 # player, inventory
@@ -628,6 +633,88 @@ def is_blocked(x, y):
     return False
 
 
+def main_menu():
+    img = libtcod.image_load('gidSmall.png')
+    while not libtcod.console_is_window_closed():
+        # con.clear(bg=libtcod.white)
+        libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 1)
+        # show the game's title, and some credits!
+        title_text = "GUESS I'LL DIE"
+        x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))
+        y = SCREEN_HEIGHT - 17
+        con.print(x, y, title_text, libtcod.white, libtcod.black, libtcod.BKGND_OVERLAY)
+        con.blit(root, x - 1, y - 1, x - 1, y - 1, len(title_text) + 2, 3)
+        libtcod.console_flush(clear_color=libtcod.white)
+        key = libtcod.console_wait_for_keypress(True)
+        con.clear(bg=libtcod.black)
+
+        # create an off-screen console that represents the menu's window
+        choice = menu('', ['Play a new game', 'High Scores', 'Quit'], 24)
+        if choice is 0:
+            new_game()
+        elif choice is 1:
+            pass
+        else:
+            break
+
+        # window = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
+        # libtcod.console_blit(window, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0, 1.0, 0.7)
+
+def show_scores():
+    pass
+
+
+def new_game():
+    global player, objects, fov_recompute, game_state, fov_map
+    # create object representing the player
+    fighter_component = Fighter(hp=10, defense=1, power=2, xp=0, death_function=player_death)
+
+    player = Character(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
+
+    equipment_component = Equipment(slot='right hand', power_bonus=1)
+    obj = Object(0, 0, '-', 'rolled-up newspaper', libtcod.light_grey, equipment=equipment_component)
+    inventory.append(obj)
+    equipment_component.equip()
+    obj.always_visible = True
+
+    # the list of objects starting with the playerc
+    objects = [player]
+
+    # generate map (at this point it's not drawn to the screen)
+    make_map()
+
+    # generate field of view map based on level map
+    fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
+    for y in range(MAP_HEIGHT):
+        for x in range(MAP_WIDTH):
+            libtcod.map_set_properties(fov_map, x, y, not map[x][y].block_sight, not map[x][y].blocked)
+
+    # global variables
+    fov_recompute = True
+    game_state = STRING_PLAYING
+    player_action = None
+
+    message('You are an elderly adventurer, come to the dungeon for one last quest. Recover the Golden Pigeon of Nyan!',
+            libtcod.white)
+    libtcod.console_flush()
+
+    # main loop
+    while not libtcod.console_is_window_closed():
+
+        # render the screen
+        render_all()
+        libtcod.console_flush()
+
+        # erase all objects at their old locations, before they move
+        for object in objects:
+            object.clear()
+
+        # handle keys and exit game if needed
+        player_action = handle_keys()
+        if player_action == STRING_EXIT:
+            break
+
+
 #############################################
 # Initialization & Main Loop
 #############################################
@@ -636,70 +723,4 @@ root = libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, "guess I'll die", 
 msg_panel = libtcod.console_new(SCREEN_WIDTH, MSG_HEIGHT)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
-
-img = libtcod.image_load('gidSmall.png')
-while not libtcod.console_is_window_closed():
-    # con.draw_rect(0, 0, SCREEN_WIDTH, SCREEN_WIDTH, True, fg=libtcod.white, bg=libtcod.white)
-    libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 1)
-    # show the game's title, and some credits!
-    title_text = "GUESS I'LL DIE"
-    x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))
-    y = SCREEN_HEIGHT - 17
-    con.print(x, y, title_text, libtcod.white, libtcod.black, libtcod.BKGND_OVERLAY)
-    con.blit(root, x - 1, y - 1, x - 1, y - 1, len(title_text) + 2, 3)
-    libtcod.console_flush(clear_color=libtcod.white)
-    key = libtcod.console_wait_for_keypress(True)
-    con.clear()
-
-    # create an off-screen console that represents the menu's window
-    # window = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
-    # libtcod.console_blit(window, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0, 1.0, 0.7)
-
-    break
-
-# create object representing the player
-fighter_component = Fighter(hp=10, defense=1, power=2, xp=0, death_function=player_death)
-player = Character(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
-
-equipment_component = Equipment(slot='right hand', power_bonus=1)
-obj = Object(0, 0, '-', 'rolled-up newspaper', libtcod.light_grey, equipment=equipment_component)
-inventory.append(obj)
-equipment_component.equip()
-obj.always_visible = True
-
-# the list of objects starting with the player
-objects = [player]
-
-# generate map (at this point it's not drawn to the screen)
-make_map()
-
-# generate field of view map based on level map
-fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
-for y in range(MAP_HEIGHT):
-    for x in range(MAP_WIDTH):
-        libtcod.map_set_properties(fov_map, x, y, not map[x][y].block_sight, not map[x][y].blocked)
-
-# global variables
-fov_recompute = True
-game_state = STRING_PLAYING
-player_action = None
-
-message('You are an elderly adventurer, come to the dungeon for one last quest. Recover the Golden Pigeon of Nyan!',
-        libtcod.white)
-libtcod.console_flush()
-
-# main loop
-while not libtcod.console_is_window_closed():
-
-    # render the screen
-    render_all()
-    libtcod.console_flush()
-
-    # erase all objects at their old locations, before they move
-    for object in objects:
-        object.clear()
-
-    # handle keys and exit game if needed
-    player_action = handle_keys()
-    if player_action == STRING_EXIT:
-        break
+main_menu()
