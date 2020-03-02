@@ -214,7 +214,7 @@ class Item:
 
             # special case: automatically equip, if the corresponding equipment slot is unused
             equipment = self.owner.equipment
-            if equipment and self.owner.get_equipped_in_slot(equipment.slot) is None:
+            if equipment and player.get_equipped_in_slot(equipment.slot) is None:
                 equipment.equip()
 
     def drop(self):
