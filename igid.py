@@ -59,6 +59,15 @@ objects = []
 fov_recompute = None
 game_state = None
 fov_map = None
+state_obj = None
+
+
+class GameState:
+
+    def __init__(self):
+        self.score = 0
+        self.time = 0
+        self.discovered = {}
 
 
 # player, inventory
@@ -396,6 +405,7 @@ def render_all():
     # show the player's stats
     render_bar(1, 1, BAR_WIDTH, 'HP', player.fighter.hp, player.fighter.max_hp,
                libtcod.light_red, libtcod.darker_red)
+    panel.print(1, 2, 'Score: ' + str(state_obj.score))
     panel.print(1, 3, 'Dungeon level ' + str(dungeon_level))
 
     # display names of objects under the mouse
@@ -665,7 +675,7 @@ def show_scores():
 
 
 def new_game():
-    global player, objects, fov_recompute, game_state, fov_map
+    global player, objects, fov_recompute, game_state, fov_map, state_obj
     # create object representing the player
     fighter_component = Fighter(hp=10, defense=1, power=2, xp=0, death_function=player_death)
 
@@ -693,6 +703,7 @@ def new_game():
     fov_recompute = True
     game_state = STRING_PLAYING
     player_action = None
+    state_obj = GameState()
 
     message('You are an elderly adventurer, come to the dungeon for one last quest. Recover the Golden Pigeon of Nyan!',
             libtcod.white)
@@ -713,6 +724,11 @@ def new_game():
         player_action = handle_keys()
         if player_action == STRING_EXIT:
             break
+        elif player_action != STRING_NO_ACTION:
+            state_obj.time += 1
+            if state_obj.time % 10 == 0:
+                state_obj.score += 1
+
 
 
 #############################################
