@@ -3,6 +3,8 @@ import textwrap
 import math
 import random
 
+#TODO Fix new gaame state
+
 # actual size of the window
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 52
@@ -25,6 +27,8 @@ INVENTORY_WIDTH = 50
 CHARACTER_SCREEN_WIDTH = 30
 LEVEL_SCREEN_WIDTH = 40
 
+MENU_WIDTH = 24
+
 # fov
 FOV_ALGO = 0  # default FOV algorithm
 FOV_LIGHT_WALLS = True
@@ -32,10 +36,14 @@ MAX_LIGHT_RADIUS = 10
 
 LIMIT_FPS = 20  # 20 frames-per-second maximum
 
-# game state strings
+# action strings
 STRING_EXIT = 'exit'
 STRING_NO_ACTION = 'didnt-take-turn'
-STRING_PLAYING = 'playing'
+
+# game state strings
+
+GS_PLAYING = 'playing'
+GS_DEAD = 'dead'
 
 # experience and level-ups
 LEVEL_UP_BASE = 200
@@ -102,7 +110,7 @@ class Object:
             self.y += dy
         elif self is player:
             message("Ouch! You blunder into a wall.", libtcod.orange)
-            player.fighter.take_damage(random.randint(1, WALL_DMG))
+            player.fighter.take_damage(random.randint(1, WALL_DMG), "running into a wall")
 
     def draw(self):
         if libtcod.map_is_in_fov(fov_map, self.x, self.y):
@@ -178,7 +186,7 @@ class Fighter:
         else:
             message(self.owner.name.capitalize() + ' attacks ' + target.name + ' but it has no effect!')
 
-    def take_damage(self, damage):
+    def take_damage(self, damage, death_text):
         # apply damage if possible
         if damage > 0:
             self.hp -= damage
@@ -187,7 +195,7 @@ class Fighter:
             if self.hp <= 0:
                 function = self.death_function
                 if function is not None:
-                    function(self.owner)
+                    function(self.owner, death_text)
 
                 if self.owner != player:  # yield experience to the player
                     player.fighter.xp += self.xp
@@ -527,17 +535,19 @@ def inventory_menu(header):
 def handle_keys():
     global fov_recompute
 
-    # key = libtcod.console_check_for_keypress()  #real-time
-    key = libtcod.console_wait_for_keypress(True)  # turn-based
+    key = libtcod.console_wait_for_keypress(True)
 
     if key.vk == libtcod.KEY_ENTER and key.lalt:
-        # Alt+Enter: toggle fullscreen
+        # toggle fullscreen
         libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
 
     elif key.vk == libtcod.KEY_ESCAPE:
-        return STRING_EXIT  # exit game
+        confirm = menu("Abandon the quest?", ["Yes", "No"], MENU_WIDTH)
+        if confirm == 0:
+            return STRING_EXIT
+        return STRING_NO_ACTION
 
-    if game_state == STRING_PLAYING:
+    if game_state == GS_PLAYING:
         # movement keys
         if libtcod.console_is_key_pressed(libtcod.KEY_UP):
             player.move(0, -1)
@@ -592,6 +602,10 @@ def handle_keys():
                     next_level()
 
             return STRING_NO_ACTION
+    elif game_state == GS_DEAD:
+        tombstone()
+        # TODO no
+        return STRING_EXIT
 
 
 def next_level():
@@ -619,15 +633,27 @@ def initialize_fov():
     libtcod.console_clear(con)  # unexplored areas start black (which is the default background color)
 
 
-def player_death(pc):
+def player_death(pc, death_text):
     # the game ended!
     global game_state
     message('You died!', libtcod.red)
-    game_state = 'dead'
-
+    game_state = GS_DEAD
     # for added effect, transform the player into a corpse!
     pc.char = '%'
     pc.color = libtcod.dark_red
+
+    # key = libtcod.console_wait_for_keypress(True)
+
+    # tombstone()
+
+
+def tombstone():
+    death_screen = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
+    death_screen.clear(bg=libtcod.black)
+    death_screen.print(0, 0, "ardvark")
+    death_screen.blit(root)
+
+
 
 
 def is_blocked(x, y):
@@ -644,6 +670,7 @@ def is_blocked(x, y):
 
 
 def main_menu():
+    root.clear(fg=libtcod.white, bg=libtcod.white)
     img = libtcod.image_load('gidSmall.png')
     while not libtcod.console_is_window_closed():
         # con.clear(bg=libtcod.white)
@@ -659,7 +686,7 @@ def main_menu():
         con.clear(bg=libtcod.black)
 
         # create an off-screen console that represents the menu's window
-        choice = menu('', ['Play a new game', 'High Scores', 'Quit'], 24)
+        choice = menu('', ['NEW GAME', 'SCORES', 'QUIT'], 24)
         if choice is 0:
             new_game()
         elif choice is 1:
@@ -701,7 +728,7 @@ def new_game():
 
     # global variables
     fov_recompute = True
-    game_state = STRING_PLAYING
+    game_state = GS_PLAYING
     player_action = None
     state_obj = GameState()
 
@@ -717,8 +744,8 @@ def new_game():
         libtcod.console_flush()
 
         # erase all objects at their old locations, before they move
-        for object in objects:
-            object.clear()
+        for o in objects:
+            o.clear()
 
         # handle keys and exit game if needed
         player_action = handle_keys()
@@ -726,9 +753,8 @@ def new_game():
             break
         elif player_action != STRING_NO_ACTION:
             state_obj.time += 1
-            if state_obj.time % 10 == 0:
+            if state_obj.time % 10 == 0: # Score from time survived
                 state_obj.score += 1
-
 
 
 #############################################
