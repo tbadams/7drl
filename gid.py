@@ -773,6 +773,6 @@ while not libtcod.console_is_window_closed():
     elif screen == Screen.GAME:
         new_game()
     elif screen == Screen.TOMBSTONE:
-        pass
-    elif screen == Screen.SCORE:
-        pass
+        screen = Screen.MAIN_MENU
+    elif screen == Screen.SCORES:
+        screen = Screen.MAIN_MENU
