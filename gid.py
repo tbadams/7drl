@@ -1,4 +1,5 @@
 import tcod as libtcod
+import tcod.event
 import textwrap
 import math
 import random
@@ -420,9 +421,9 @@ def render_all():
         m_y += 1
 
     # show the player's stats
-    render_bar(1, 1, BAR_WIDTH, 'HP', player.fighter.hp, player.fighter.max_hp,
-               libtcod.light_red, libtcod.darker_red)
-    panel.print(1, 2, 'Score: ' + str(game.score))
+    panel.print(1, 1, 'HP: ' + str(player.fighter.hp) + "/" + str(player.fighter.max_hp),
+                libtcod.light_red)
+    panel.print(1, 2, player.name + '     Score: ' + str(game.score))
     panel.print(1, 3, 'Dungeon level ' + str(dungeon_level))
 
     # display names of objects under the mouse
@@ -479,6 +480,40 @@ def msgbox(text, width=50):
     menu(text, [], width)  # use menu() as a sort of "message box"
 
 
+def text_entry(text, width=50):
+    text_height = 0
+    if text != '':
+        text_height = con.get_height_rect(0, 0, width, SCREEN_HEIGHT, text)
+    height = text_height + 3
+    window = libtcod.console_new(width, height)
+    # blit the contents of "window" to the root console
+    x = int(SCREEN_WIDTH / 2 - width / 2)
+    y = int(SCREEN_HEIGHT / 2 - height / 2)
+
+    user_input = ""
+    while not libtcod.console_is_window_closed():
+        window.print_rect(0, 0, width, height, text)
+        libtcod.console_blit(window, 0, 0, width, height, 0, x, y, 1.0, 1.0)
+        libtcod.console_flush()
+        k = libtcod.console_wait_for_keypress(True)
+        text_len = len(user_input)
+        if k.vk == tcod.KEY_CHAR:
+            cat = chr(k.c)
+            if libtcod.console_is_key_pressed(libtcod.KEY_SHIFT):
+                cat = cat.capitalize()
+            user_input += cat
+        elif k.vk == tcod.KEY_SPACE:
+            user_input += " "
+        elif k.vk == tcod.KEY_BACKSPACE:
+            if text_len > 0:
+                user_input = user_input[0:text_len - 1]
+        elif k.vk == tcod.KEY_ENTER:
+            if text_len > 0:
+                return user_input
+        window.clear()
+        window.print(0, text_height + 2, user_input)
+
+
 def menu(header, options, width):
     if len(options) > 26: raise ValueError('Cannot have a menu with more than 26 options.')
 
@@ -488,10 +523,8 @@ def menu(header, options, width):
         header_height = 0
     height = len(options) + header_height
 
-    # create an off-screen console that represents the menu's window
+    # new temp console
     window = libtcod.console_new(width, height)
-
-    # print the header, with auto-wrap
     window.print_rect(0, 0, width, height, header)
 
     # print all the options
@@ -542,7 +575,7 @@ def inventory_menu(header):
 
 
 def handle_keys():
-    global fov_recompute
+    global fov_recompute, screen
 
     key = libtcod.console_wait_for_keypress(True)
 
@@ -612,8 +645,7 @@ def handle_keys():
 
             return STRING_NO_ACTION
     elif game_state == GS_DEAD:
-        tombstone()
-        # TODO no
+        screen = Screen.TOMBSTONE
         return STRING_EXIT
 
 
@@ -682,13 +714,18 @@ def show_scores():
 
 def new_game():
     global player, objects, fov_recompute, game_state, fov_map, game, game_msgs, inventory, dungeon_level, screen
-    game_msgs = []
+
+    root.clear(bg=libtcod.black)
+    libtcod.console_flush()
+    name = text_entry("You are an elderly adventurer, come to the dungeon for one last quest."
+                      "\n\nWhat is your name, wizened one?")
+
     inventory = []
     dungeon_level = 1
     # create object representing the player
     fighter_component = Fighter(hp=10, defense=1, power=2, xp=0, death_function=player_death)
 
-    player = Character(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
+    player = Character(0, 0, '@', name, libtcod.white, blocks=True, fighter=fighter_component)
 
     equipment_component = Equipment(slot='right hand', power_bonus=1)
     obj = Object(0, 0, '-', 'rolled-up newspaper', libtcod.light_grey, equipment=equipment_component)
@@ -714,10 +751,8 @@ def new_game():
     player_action = None
     game = GameState()
 
-    message('You are an elderly adventurer, come to the dungeon for one last quest. Recover the Golden Pigeon of Nyan!',
-            libtcod.white)
-    libtcod.console_flush()
-
+    game_msgs = []
+    message("Go, " + player.name + "! Recover the Golden Pigeon of Nyan!", libtcod.white)
     # main loop
     while not libtcod.console_is_window_closed():
 
@@ -773,6 +808,7 @@ while not libtcod.console_is_window_closed():
     elif screen == Screen.GAME:
         new_game()
     elif screen == Screen.TOMBSTONE:
+        show_scores()
         screen = Screen.MAIN_MENU
     elif screen == Screen.SCORES:
         screen = Screen.MAIN_MENU
