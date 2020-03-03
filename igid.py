@@ -61,13 +61,13 @@ WALL_DMG = 10
 game_msgs = []
 inventory = []
 dungeon_level = 1
+objects = []
 stairs = None
 player = None
-objects = []
 fov_recompute = None
 game_state = None
 fov_map = None
-state_obj = None
+game = None
 
 
 class GameState:
@@ -76,7 +76,6 @@ class GameState:
         self.score = 0
         self.time = 0
         self.discovered = {}
-
 
 # player, inventory
 
@@ -413,7 +412,7 @@ def render_all():
     # show the player's stats
     render_bar(1, 1, BAR_WIDTH, 'HP', player.fighter.hp, player.fighter.max_hp,
                libtcod.light_red, libtcod.darker_red)
-    panel.print(1, 2, 'Score: ' + str(state_obj.score))
+    panel.print(1, 2, 'Score: ' + str(game.score))
     panel.print(1, 3, 'Dungeon level ' + str(dungeon_level))
 
     # display names of objects under the mouse
@@ -702,7 +701,10 @@ def show_scores():
 
 
 def new_game():
-    global player, objects, fov_recompute, game_state, fov_map, state_obj
+    global player, objects, fov_recompute, game_state, fov_map, game, game_msgs, inventory, dungeon_level
+    game_msgs = []
+    inventory = []
+    dungeon_level = 1
     # create object representing the player
     fighter_component = Fighter(hp=10, defense=1, power=2, xp=0, death_function=player_death)
 
@@ -730,7 +732,7 @@ def new_game():
     fov_recompute = True
     game_state = GS_PLAYING
     player_action = None
-    state_obj = GameState()
+    game = GameState()
 
     message('You are an elderly adventurer, come to the dungeon for one last quest. Recover the Golden Pigeon of Nyan!',
             libtcod.white)
@@ -752,9 +754,9 @@ def new_game():
         if player_action == STRING_EXIT:
             break
         elif player_action != STRING_NO_ACTION:
-            state_obj.time += 1
-            if state_obj.time % 10 == 0: # Score from time survived
-                state_obj.score += 1
+            game.time += 1
+            if game.time % 10 == 0: # Score from time survived
+                game.score += 1
 
 
 #############################################
