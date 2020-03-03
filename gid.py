@@ -2,8 +2,7 @@ import tcod as libtcod
 import textwrap
 import math
 import random
-
-#TODO Fix new gaame state
+from enum import Enum, auto
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -70,12 +69,23 @@ fov_map = None
 game = None
 
 
+class Screen(Enum):
+    MAIN_MENU = auto()
+    GAME = auto()
+    TOMBSTONE = auto()
+    SCORES = auto()
+
+
+screen = Screen.MAIN_MENU
+
+
 class GameState:
 
     def __init__(self):
         self.score = 0
         self.time = 0
         self.discovered = {}
+
 
 # player, inventory
 
@@ -653,8 +663,6 @@ def tombstone():
     death_screen.blit(root)
 
 
-
-
 def is_blocked(x, y):
     # first test the map tile
     if map[x][y].blocked:
@@ -668,40 +676,12 @@ def is_blocked(x, y):
     return False
 
 
-def main_menu():
-    root.clear(fg=libtcod.white, bg=libtcod.white)
-    img = libtcod.image_load('gidSmall.png')
-    while not libtcod.console_is_window_closed():
-        # con.clear(bg=libtcod.white)
-        libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 1)
-        # show the game's title, and some credits!
-        title_text = "GUESS I'LL DIE"
-        x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))
-        y = SCREEN_HEIGHT - 17
-        con.print(x, y, title_text, libtcod.white, libtcod.black, libtcod.BKGND_OVERLAY)
-        con.blit(root, x - 1, y - 1, x - 1, y - 1, len(title_text) + 2, 3)
-        libtcod.console_flush(clear_color=libtcod.white)
-        key = libtcod.console_wait_for_keypress(True)
-        con.clear(bg=libtcod.black)
-
-        # create an off-screen console that represents the menu's window
-        choice = menu('', ['NEW GAME', 'SCORES', 'QUIT'], 24)
-        if choice is 0:
-            new_game()
-        elif choice is 1:
-            pass
-        else:
-            break
-
-        # window = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
-        # libtcod.console_blit(window, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0, 1.0, 0.7)
-
 def show_scores():
     pass
 
 
 def new_game():
-    global player, objects, fov_recompute, game_state, fov_map, game, game_msgs, inventory, dungeon_level
+    global player, objects, fov_recompute, game_state, fov_map, game, game_msgs, inventory, dungeon_level, screen
     game_msgs = []
     inventory = []
     dungeon_level = 1
@@ -752,10 +732,11 @@ def new_game():
         # handle keys and exit game if needed
         player_action = handle_keys()
         if player_action == STRING_EXIT:
+            screen = Screen.MAIN_MENU
             break
         elif player_action != STRING_NO_ACTION:
             game.time += 1
-            if game.time % 10 == 0: # Score from time survived
+            if game.time % 10 == 0:  # Score from time survived
                 game.score += 1
 
 
@@ -767,4 +748,31 @@ root = libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, "guess I'll die", 
 msg_panel = libtcod.console_new(SCREEN_WIDTH, MSG_HEIGHT)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
-main_menu()
+while not libtcod.console_is_window_closed():
+    if screen == Screen.MAIN_MENU:
+        root.clear(fg=libtcod.white, bg=libtcod.white)
+        img = libtcod.image_load('gidSmall.png')
+        libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 1)
+        title_text = "GUESS I'LL DIE"
+        x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))
+        y = SCREEN_HEIGHT - 17
+        con.print(x, y, title_text, libtcod.white, libtcod.black, libtcod.BKGND_OVERLAY)
+        con.blit(root, x - 1, y - 1, x - 1, y - 1, len(title_text) + 2, 3)
+        libtcod.console_flush(clear_color=libtcod.white)
+        key = libtcod.console_wait_for_keypress(True)
+        con.clear(bg=libtcod.black)
+
+        # create an off-screen console that represents the menu's window
+        choice = menu('', ['NEW GAME', 'SCORES', 'QUIT'], 24)
+        if choice is 0:
+            screen = Screen.GAME
+        elif choice is 1:
+            screen = Screen.SCORES
+        else:
+            break
+    elif screen == Screen.GAME:
+        new_game()
+    elif screen == Screen.TOMBSTONE:
+        pass
+    elif screen == Screen.SCORE:
+        pass
