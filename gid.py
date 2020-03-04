@@ -219,9 +219,6 @@ class Fighter:
             self.hp = self.max_hp
 
 
-
-
-
 class Item:
     # an item that can be picked up and used.
     def __init__(self, use_function=None):
@@ -300,9 +297,6 @@ class Equipment:
         if not self.is_equipped: return
         self.is_equipped = False
         message('Dequipped ' + self.owner.name + ' from ' + self.slot + '.', libtcod.light_yellow)
-
-
-
 
 
 # runtime functions
@@ -591,7 +585,7 @@ def next_level():
 
     dungeon_level += 1
     message('You manage to avoid falling down the stairs.', libtcod.yellow)
-    map = make_map(MAP_WIDTH, MAP_HEIGHT)  # create a fresh new level!
+    map = make_map(MAP_WIDTH, MAP_HEIGHT, player)  # create a fresh new level!
     initialize_fov()
 
 
@@ -674,9 +668,7 @@ def new_game():
     objects = [player]
 
     # generate map (at this point it's not drawn to the screen)
-    map = make_map(MAP_WIDTH, MAP_HEIGHT)
-    player.x = 25
-    player.y = 23
+    map = make_map(MAP_WIDTH, MAP_HEIGHT, player)
 
     # generate field of view map based on level map
     fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
@@ -724,6 +716,7 @@ panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 while not libtcod.console_is_window_closed():
     if screen == Screen.MAIN_MENU:
         root.clear(fg=libtcod.white, bg=libtcod.white)
+        con.clear(bg=libtcod.black)
         img = libtcod.image_load('gidSmall.png')
         libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 2)
         title_text = "GUESS I'LL DIE"
@@ -750,5 +743,5 @@ while not libtcod.console_is_window_closed():
         screen = Screen.SCORES
     elif screen == Screen.SCORES:
         show_scores()
-        player = None # clean up
+        player = None  # clean up
         screen = Screen.MAIN_MENU
