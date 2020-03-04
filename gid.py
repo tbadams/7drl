@@ -4,6 +4,7 @@ import textwrap
 import math
 import random
 from enum import Enum, auto
+from map import make_map
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -68,6 +69,7 @@ fov_recompute = None
 game_state = None
 fov_map = None
 game = None
+map = None
 
 
 class Screen(Enum):
@@ -217,16 +219,7 @@ class Fighter:
             self.hp = self.max_hp
 
 
-# map stuff
-class Tile:
-    # a tile of the map and its properties
-    def __init__(self, blocked, block_sight=None):
-        self.explored = False
-        self.blocked = blocked
 
-        # by default, if a tile is blocked, it also blocks sight
-        if block_sight is None: block_sight = blocked
-        self.block_sight = block_sight
 
 
 class Item:
@@ -309,65 +302,7 @@ class Equipment:
         message('Dequipped ' + self.owner.name + ' from ' + self.slot + '.', libtcod.light_yellow)
 
 
-class Rect:
-    # a rectangle on the map. used to characterize a room.
-    def __init__(self, x, y, w, h):
-        self.x1 = x
-        self.y1 = y
-        self.x2 = x + w
-        self.y2 = y + h
 
-    def center(self):
-        center_x = (self.x1 + self.x2) / 2
-        center_y = (self.y1 + self.y2) / 2
-        return (center_x, center_y)
-
-    def intersect(self, other):
-        # returns true if this rectangle intersects with another one
-        return (self.x1 <= other.x2 and self.x2 >= other.x1 and
-                self.y1 <= other.y2 and self.y2 >= other.y1)
-
-
-def create_room(room):
-    global map
-    # go through the tiles in the rectangle and make them passable
-    for x in range(room.x1 + 1, room.x2):
-        for y in range(room.y1 + 1, room.y2):
-            map[x][y].blocked = False
-            map[x][y].block_sight = False
-
-
-def create_h_tunnel(x1, x2, y):
-    global map
-    for x in range(min(x1, x2), max(x1, x2) + 1):
-        map[x][y].blocked = False
-        map[x][y].block_sight = False
-
-
-def create_v_tunnel(y1, y2, x):
-    global map
-    # vertical tunnel
-    for y in range(min(y1, y2), max(y1, y2) + 1):
-        map[x][y].blocked = False
-        map[x][y].block_sight = False
-
-
-def make_map():
-    global map
-
-    # fill map with "blocked" tiles
-    map = [[Tile(True)
-            for y in range(MAP_HEIGHT)]
-           for x in range(MAP_WIDTH)]
-
-    # create two rooms
-    room1 = Rect(20, 15, 10, 15)
-    room2 = Rect(50, 15, 10, 15)
-    create_room(room1)
-    create_room(room2)
-    create_h_tunnel(25, 55, 23)
-    player.x = 25
-    player.y = 23
 
 
 # runtime functions
@@ -652,13 +587,11 @@ def handle_keys():
 
 def next_level():
     # advance to the next level
-    global dungeon_level
-    message('You take a moment to rest, and recover your strength.', libtcod.light_violet)
-    player.fighter.heal(player.fighter.max_hp / 2)  # heal the player by 50%
+    global dungeon_level, player, map
 
     dungeon_level += 1
-    message('After a rare moment of peace, you descend deeper into the heart of the dungeon...', libtcod.red)
-    make_map()  # create a fresh new level!
+    message('You manage to avoid falling down the stairs.', libtcod.yellow)
+    map = make_map(MAP_WIDTH, MAP_HEIGHT)  # create a fresh new level!
     initialize_fov()
 
 
@@ -717,7 +650,7 @@ def show_scores():
 
 
 def new_game():
-    global player, objects, fov_recompute, game_state, fov_map, game, game_msgs, inventory, dungeon_level, screen
+    global player, objects, fov_recompute, game_state, fov_map, game, game_msgs, inventory, dungeon_level, screen, map
 
     root.clear(bg=libtcod.black)
     libtcod.console_flush()
@@ -741,7 +674,9 @@ def new_game():
     objects = [player]
 
     # generate map (at this point it's not drawn to the screen)
-    make_map()
+    map = make_map(MAP_WIDTH, MAP_HEIGHT)
+    player.x = 25
+    player.y = 23
 
     # generate field of view map based on level map
     fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
@@ -790,12 +725,12 @@ while not libtcod.console_is_window_closed():
     if screen == Screen.MAIN_MENU:
         root.clear(fg=libtcod.white, bg=libtcod.white)
         img = libtcod.image_load('gidSmall.png')
-        libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 1)
+        libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 2)
         title_text = "GUESS I'LL DIE"
         x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))
         y = SCREEN_HEIGHT - 17
         con.print(x, y, title_text, libtcod.white, libtcod.black, libtcod.BKGND_OVERLAY)
-        con.blit(root, x - 1, y - 1, x - 1, y - 1, len(title_text) + 2, 3)
+        con.blit(root, x - 1, y - 1, x - 1, y - 1, len(title_text) + 2, 3, bg_alpha=0.7)
         libtcod.console_flush(clear_color=libtcod.white)
         key = libtcod.console_wait_for_keypress(True)
         con.clear(bg=libtcod.black)
