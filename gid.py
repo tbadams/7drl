@@ -586,6 +586,7 @@ def handle_keys():
     elif key.vk == libtcod.KEY_ESCAPE:
         confirm = menu("Abandon the quest?", ["Yes", "No"], MENU_WIDTH)
         if confirm == 0:
+            screen = Screen.MAIN_MENU
             return STRING_EXIT
         return STRING_NO_ACTION
 
@@ -689,10 +690,13 @@ def player_death(pc, death_text):
 
 
 def tombstone():
+    global player
     death_screen = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
     death_screen.clear(bg=libtcod.black)
-    death_screen.print(0, 0, "ardvark")
+    death_screen.print(0, 0, player.name)
     death_screen.blit(root)
+    libtcod.console_flush()
+    libtcod.console_wait_for_keypress(True)
 
 
 def is_blocked(x, y):
@@ -709,7 +713,7 @@ def is_blocked(x, y):
 
 
 def show_scores():
-    pass
+    libtcod.console_wait_for_keypress()
 
 
 def new_game():
@@ -767,7 +771,6 @@ def new_game():
         # handle keys and exit game if needed
         player_action = handle_keys()
         if player_action == STRING_EXIT:
-            screen = Screen.MAIN_MENU
             break
         elif player_action != STRING_NO_ACTION:
             game.time += 1
@@ -808,7 +811,9 @@ while not libtcod.console_is_window_closed():
     elif screen == Screen.GAME:
         new_game()
     elif screen == Screen.TOMBSTONE:
-        show_scores()
-        screen = Screen.MAIN_MENU
+        tombstone()
+        screen = Screen.SCORES
     elif screen == Screen.SCORES:
+        show_scores()
+        player = None # clean up
         screen = Screen.MAIN_MENU
