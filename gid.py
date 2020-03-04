@@ -713,7 +713,7 @@ def is_blocked(x, y):
 
 
 def show_scores():
-    libtcod.console_wait_for_keypress()
+    libtcod.console_wait_for_keypress(True)
 
 
 def new_game():
@@ -806,7 +806,7 @@ while not libtcod.console_is_window_closed():
             screen = Screen.GAME
         elif choice is 1:
             screen = Screen.SCORES
-        else:
+        elif choice is 2:
             break
     elif screen == Screen.GAME:
         new_game()
