@@ -5,6 +5,7 @@ from model.object import Object
 STAIRS_UP_NAME = 'stairs up'
 STAIRS_DOWN_NAME = 'stairs down'
 
+
 # map stuff
 class Floor:
     def __init__(self, tiles, objects, rooms, dlevel=1):
@@ -132,6 +133,8 @@ def make_map_rand_room(width, height, player, max_rooms=30, min_room_size=6, max
                 # this is the first room, where the player starts at
                 player.x = new_x
                 player.y = new_y
+                up = Object(new_x, new_y, '<', STAIRS_UP_NAME, libtcod.white, always_visible=True)
+                objects.append(up)
             else:
                 # all rooms after the first:
                 # connect it to the previous room with a tunnel
@@ -175,8 +178,8 @@ def make_map_test(width, height, player):
     create_room(map, room1)
     create_room(map, room2)
     create_h_tunnel(map, 25, 55, 23)
-    player.x=23
-    player.y=25
+    player.x = 23
+    player.y = 25
 
     return Floor(map, [player], [room1, room2])
 

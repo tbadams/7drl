@@ -553,6 +553,14 @@ def handle_keys():
                     next_level()
                 else:
                     message("You can't go down on that.", libtcod.white)
+
+            if key_char == ',' and key.shift:
+                if dungeon_map.stairs_up.x == player.x and dungeon_map.stairs_up.y == player.y:
+                    message("You attempt to climb the stairs but the effort destroys your already frail body.",
+                            libtcod.yellow)
+                    player.fighter.take_damage(100, "collapsed from over-exertion")
+                else:
+                    message("You can't get high here.", libtcod.white)
             else:
                 print(key)
 
@@ -609,7 +617,7 @@ def player_death(pc, death_text):
         scores = shelf[SCORE_KEY]
     scores.append(player)
     scores.sort(reverse=True, key=lambda dead_person: (
-            dead_person.death.game.score, dead_person.level, dead_person.death.floor.dungeon_level, dead_person.name))
+        dead_person.death.game.score, dead_person.level, dead_person.death.floor.dungeon_level, dead_person.name))
     shelf[SCORE_KEY] = scores
     shelf.close()
 
