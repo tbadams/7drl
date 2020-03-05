@@ -11,7 +11,9 @@ from map import make_map
 from model.object import Object
 from model.death import Death
 from map import is_blocked
-from util import json2obj
+from util import pad
+import pickle
+import shelve
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -68,6 +70,7 @@ WALL_DMG = 10
 OBAMA_CHANCE = 0.01
 
 SCORES_FILE_NAME = "scores.json"
+SCORE_KEY = "score"
 ACHEIVEMENTS_FILE_NAME = "acheive.json"
 
 # game state
@@ -591,16 +594,25 @@ def player_death(pc, death_text):
     pc.char = '%'
     pc.color = libtcod.dark_red
 
-    #save to high score
-    thing = json2obj(json.dumps(player.death.__dict__))
+    # save to high score
+    shelf = shelve.open(SCORES_FILE_NAME)
+    scores = []
+    if SCORE_KEY in shelf:
+        scores = shelf[SCORE_KEY]
+    scores.append(player)
+    scores.sort(reverse=True, key=lambda dead_person: (
+            dead_person.death.game.score, dead_person.level, dead_person.death.floor.dungeon_level, dead_person.name))
+    shelf[SCORE_KEY] = scores
+    shelf.close()
 
 
-
-def load_scores_json():
-    raw = "[]"
-    if path.exists(SCORES_FILE_NAME):
-        raw = open(SCORES_FILE_NAME, "r").read()
-    return json.loads(raw)
+def load_scores():
+    shelf = shelve.open(SCORES_FILE_NAME)
+    scores = []
+    if SCORE_KEY in shelf:
+        scores = shelf[SCORE_KEY]
+    shelf.close()
+    return scores
 
 
 def tombstone():
@@ -645,7 +657,21 @@ def tombstone():
 
 
 def show_scores():
-    load_scores_json()
+    root.clear(bg=libtcod.black)
+    x_coord = 1
+    y_start = 0
+    rank = 1
+    scores = load_scores()
+    for dead_person in scores:
+        y_coord = rank + y_start
+        num_txt = pad(str(rank) + ". ", 5)
+        score_txt = pad(str(dead_person.death.game.score) + "   ", 8)
+        name_txt = pad(dead_person.name + "   ", 24)
+        epitath_txt = pad(dead_person.death.epitath,
+                          SCREEN_WIDTH - x_coord - len(num_txt) - len(score_txt) - len(name_txt))
+        root.print(x_coord, y_coord, num_txt + score_txt + name_txt + epitath_txt, libtcod.white)
+        rank += 1
+    libtcod.console_flush()
     libtcod.console_wait_for_keypress(True)
 
 
