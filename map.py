@@ -5,9 +5,11 @@ from model.object import Object
 
 # map stuff
 class Floor:
-    def __init__(self, tiles, objects):
+    def __init__(self, tiles, objects, rooms, dlevel=1):
         self.tiles = tiles
         self.objects = objects
+        self.dungeon_level = dlevel
+        self.rooms = rooms
 
 
 class Tile:
@@ -40,38 +42,38 @@ class Rect:
                 self.y1 <= other.y2 and self.y2 >= other.y1)
 
 
-def is_blocked(x, y, objects, map):
+def is_blocked(x, y, floor):
     # first test the map tile
-    if map[x][y].blocked:
+    if floor.tiles[x][y].blocked:
         return True
 
     # now check for any blocking objects
-    for object in objects:
+    for object in floor.objects:
         if object.blocks and object.x == x and object.y == y:
             return True
 
     return False
 
 
-def create_room(map, room):
+def create_room(tiles, room):
     # go through the tiles in the rectangle and make them passable
     for x in range(room.x1 + 1, room.x2):
         for y in range(room.y1 + 1, room.y2):
-            map[x][y].blocked = False
-            map[x][y].block_sight = False
+            tiles[x][y].blocked = False
+            tiles[x][y].block_sight = False
 
 
-def create_h_tunnel(map, x1, x2, y):
+def create_h_tunnel(tiles, x1, x2, y):
     for x in range(min(x1, x2), max(x1, x2) + 1):
-        map[x][y].blocked = False
-        map[x][y].block_sight = False
+        tiles[x][y].blocked = False
+        tiles[x][y].block_sight = False
 
 
-def create_v_tunnel(map, y1, y2, x):
+def create_v_tunnel(tiles, y1, y2, x):
     # vertical tunnel
     for y in range(min(y1, y2), max(y1, y2) + 1):
-        map[x][y].blocked = False
-        map[x][y].block_sight = False
+        tiles[x][y].blocked = False
+        tiles[x][y].block_sight = False
 
 
 def make_map(width, height, player):
@@ -146,9 +148,9 @@ def make_map_rand_room(width, height, player, max_rooms=30, min_room_size=6, max
             num_rooms += 1
 
     # create stairs at the center of the last room
-    stairs = Object(new_x, new_y, '<', 'stairs', libtcod.white, always_visible=True)
+    stairs = Object(new_x, new_y, '>', 'stairs', libtcod.white, always_visible=True)
     objects.append(stairs)
-    return Floor(map, objects)
+    return Floor(map, objects, rooms)
 
 
 def make_map_dir_cave(width, height, player, length, roughness, windiness, start_x=-1, start_y=2):
@@ -170,7 +172,7 @@ def make_map_test(width, height, player):
     player.x=23
     player.y=25
 
-    return Floor(map, [player])
+    return Floor(map, [player], [room1, room2])
 
 
 def from_dungeon_level(table, dungeon_level):

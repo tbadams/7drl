@@ -63,15 +63,15 @@ WALL_DMG = 10
 # game state
 game_msgs = []
 inventory = []
-dungeon_level = 1
-objects = []
-stairs = None
+# dungeon_level = 1
+# objects = []
+# stairs = None
 player = None
 fov_recompute = None
 game_state = None
 fov_map = None
 game = None
-map = None
+dungeon_map = None
 
 
 class Screen(Enum):
@@ -79,9 +79,6 @@ class Screen(Enum):
     GAME = auto()
     TOMBSTONE = auto()
     SCORES = auto()
-
-
-screen = Screen.MAIN_MENU
 
 
 class GameState:
@@ -103,6 +100,7 @@ class Character(Object):
             fighter.owner = self
 
         self.level = 1
+        self.death = None
 
     def get_all_equipped(self):  # returns a list of equipped items
         if self == player:
@@ -181,8 +179,8 @@ class Fighter:
 
 def move(thing, dx, dy):
     # move by the given amount if not blocked
-    global map
-    if not is_blocked(thing.x + dx, thing.y + dy, objects, map):
+    global dungeon_map
+    if not is_blocked(thing.x + dx, thing.y + dy, dungeon_map):
         thing.x += dx
         thing.y += dy
     elif thing is player:
@@ -191,12 +189,13 @@ def move(thing, dx, dy):
 
 
 def pick_up(item):
+    global dungeon_map
     # add to the player's inventory and remove from the map
     if len(inventory) >= 26:
         message('Your inventory is full, cannot pick up ' + item.owner.name + '.', libtcod.red)
     else:
         inventory.append(item.owner)
-        objects.remove(item.owner)
+        dungeon_map.objects.remove(item.owner)
         message('You picked up a ' + item.owner.name + '!', libtcod.green)
 
         # special case: automatically equip, if the corresponding equipment slot is unused
@@ -206,12 +205,13 @@ def pick_up(item):
 
 
 def drop(item):
+    global dungeon_map
     # special case: if the object has the Equipment component, dequip it before dropping
     if item.owner.equipment:
         item.owner.equipment.dequip()
 
     # add to the map and remove from the player's inventory. also, place it at the player's coordinates
-    objects.append(item.owner)
+    dungeon_map.objects.append(item.owner)
     inventory.remove(item.owner)
     item.owner.x = player.x
     item.owner.y = player.y
@@ -270,7 +270,7 @@ class Equipment:
 def render_all():
     global fov_map, color_dark_wall, color_light_wall
     global color_dark_ground, color_light_ground
-    global fov_recompute
+    global fov_recompute, dungeon_map
     if fov_recompute:
         # recompute FOV if needed (the player moved or something)
         fov_recompute = False
@@ -279,10 +279,10 @@ def render_all():
         for y in range(MAP_HEIGHT):
             for x in range(MAP_WIDTH):
                 visible = libtcod.map_is_in_fov(fov_map, x, y)
-                wall = map[x][y].block_sight
+                wall = dungeon_map.tiles[x][y].block_sight
                 if not visible:
                     # if it's not visible right now, the player can only see it if it's explored
-                    if map[x][y].explored:
+                    if dungeon_map.tiles[x][y].explored:
                         # it's out of the player's FOV
                         if wall:
                             libtcod.console_set_char_background(con, x, y, color_dark_wall, libtcod.BKGND_SET)
@@ -294,11 +294,11 @@ def render_all():
                         libtcod.console_set_char_background(con, x, y, color_light_wall, libtcod.BKGND_SET)
                     else:
                         libtcod.console_set_char_background(con, x, y, color_light_ground, libtcod.BKGND_SET)
-                    map[x][y].explored = True
+                    dungeon_map.tiles[x][y].explored = True
 
     # draw all objects in the list, except the player. we want it to
     # always appear over all other objects! so it's drawn later.
-    for o in objects:
+    for o in dungeon_map.objects:
         if o != player:
             o.draw(con, fov_map)
     player.draw(con, fov_map)
@@ -320,7 +320,7 @@ def render_all():
     panel.print(1, 1, 'HP: ' + str(player.fighter.hp) + "/" + str(player.fighter.max_hp),
                 libtcod.light_red)
     panel.print(1, 2, player.name + '     Score: ' + str(game.score))
-    panel.print(1, 3, 'Dungeon level ' + str(dungeon_level))
+    panel.print(1, 3, 'Dungeon level ' + str(dungeon_map.dungeon_level))
 
     # display names of objects under the mouse
     panel.print(1, 0, get_names_under_mouse(), bg=libtcod.light_gray)
@@ -348,11 +348,12 @@ def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
 
 def get_names_under_mouse():
     # return a string with the names of all objects under the mouse
+    global dungeon_map
     mouse = libtcod.mouse_get_status()
     (x, y) = (mouse.cx, mouse.cy)
 
     # create a list with the names of all objects at the mouse's coordinates and in FOV
-    names = [obj.name for obj in objects
+    names = [obj.name for obj in dungeon_map.objects
              if obj.x == x and obj.y == y and libtcod.map_is_in_fov(fov_map, obj.x, obj.y)]
 
     names = ', '.join(names)  # join the names, separated by commas
@@ -471,7 +472,7 @@ def inventory_menu(header):
 
 
 def handle_keys():
-    global fov_recompute, screen
+    global fov_recompute, screen, dungeon_map
 
     key = libtcod.console_wait_for_keypress(True)
 
@@ -509,7 +510,7 @@ def handle_keys():
 
             if key_char == 'g':
                 # pick up an item
-                for object in objects:  # look for an item in the player's tile
+                for object in dungeon_map.objects:  # look for an item in the player's tile
                     if object.x == player.x and object.y == player.y and object.item:
                         pick_up(object.item)
                         break
@@ -537,7 +538,7 @@ def handle_keys():
 
             if key_char == '<':
                 # go down stairs, if the player is on them
-                if stairs.x == player.x and stairs.y == player.y:
+                if dungeon_map.stairs.x == player.x and dungeon_map.stairs.y == player.y:
                     next_level()
 
             return STRING_NO_ACTION
@@ -548,13 +549,11 @@ def handle_keys():
 
 def next_level():
     # advance to the next level
-    global dungeon_level, player, map, objects
+    global dungeon_map, player
 
-    dungeon_level += 1
+    dungeon_map.dungeon_level += 1
     message('You manage to avoid falling down the stairs.', libtcod.yellow)
-    floor = make_map(MAP_WIDTH, MAP_HEIGHT, player)  # create a fresh new level!
-    map = floor.tiles
-    objects = floor.objects
+    dungeon_map = make_map(MAP_WIDTH, MAP_HEIGHT, player)
     initialize_fov()
 
 
@@ -566,7 +565,8 @@ def initialize_fov():
     fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
     for y in range(MAP_HEIGHT):
         for x in range(MAP_WIDTH):
-            libtcod.map_set_properties(fov_map, x, y, not map[x][y].block_sight, not map[x][y].blocked)
+            libtcod.map_set_properties(fov_map, x, y, not dungeon_map.tiles[x][y].block_sight,
+                                       not dungeon_map.tiles[x][y].blocked)
 
     libtcod.console_clear(con)  # unexplored areas start black (which is the default background color)
 
@@ -584,11 +584,12 @@ def player_death(pc, death_text):
 
 
 def tombstone():
-    global player, game
+    global player, game, dungeon_map
     death_screen = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
     death_screen.clear(bg=libtcod.black)
     death_screen.print(0, 0, player.name)
-    death_screen.print(0, 1, str(game.score))
+    death_screen.print(0, 1, "Score: " + str(game.score))
+    death_screen.print(0, 2, "Dungeon Level: " + str(dungeon_map.dungeon_level))
     death_screen.blit(root)
     libtcod.console_flush()
     libtcod.console_wait_for_keypress(True)
@@ -599,7 +600,7 @@ def show_scores():
 
 
 def new_game():
-    global player, objects, fov_recompute, game_state, fov_map, game, game_msgs, inventory, dungeon_level, screen, map
+    global player, fov_recompute, game_state, fov_map, game, game_msgs, inventory, dungeon_map, screen
 
     root.clear(bg=libtcod.black)
     libtcod.console_flush()
@@ -620,15 +621,14 @@ def new_game():
     obj.always_visible = True
 
     # generate map (at this point it's not drawn to the screen)
-    floor = make_map(MAP_WIDTH, MAP_HEIGHT, player)
-    map = floor.tiles
-    objects = floor.objects
+    dungeon_map = make_map(MAP_WIDTH, MAP_HEIGHT, player)
 
     # generate field of view map based on level map
     fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
     for y in range(MAP_HEIGHT):
         for x in range(MAP_WIDTH):
-            libtcod.map_set_properties(fov_map, x, y, not map[x][y].block_sight, not map[x][y].blocked)
+            libtcod.map_set_properties(fov_map, x, y, not dungeon_map.tiles[x][y].block_sight,
+                                       not dungeon_map.tiles[x][y].blocked)
 
     # global variables
     fov_recompute = True
@@ -646,7 +646,7 @@ def new_game():
         libtcod.console_flush()
 
         # erase all objects at their old locations, before they move
-        for o in objects:
+        for o in dungeon_map.objects:
             o.clear(con)
 
         # handle keys and exit game if needed
@@ -667,6 +667,7 @@ root = libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, "guess I'll die", 
 msg_panel = libtcod.console_new(SCREEN_WIDTH, MSG_HEIGHT)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
+screen = Screen.MAIN_MENU
 while not libtcod.console_is_window_closed():
     if screen == Screen.MAIN_MENU:
         root.clear(fg=libtcod.white, bg=libtcod.white)
