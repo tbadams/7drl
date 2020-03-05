@@ -1,12 +1,17 @@
 import tcod as libtcod
 import tcod.event
 import textwrap
+import json
+from os import path
+
 import math
 import random
 from enum import Enum, auto
 from map import make_map
 from model.object import Object
+from model.death import Death
 from map import is_blocked
+from util import json2obj
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -58,14 +63,16 @@ color_dark_ground = libtcod.Color(50, 50, 150)
 color_light_wall = libtcod.Color(130, 110, 50)
 color_light_ground = libtcod.Color(200, 180, 50)
 
+INVENTORY_MAX = 26
 WALL_DMG = 10
+OBAMA_CHANCE = 0.01
+
+SCORES_FILE_NAME = "scores.json"
+ACHEIVEMENTS_FILE_NAME = "acheive.json"
 
 # game state
 game_msgs = []
 inventory = []
-# dungeon_level = 1
-# objects = []
-# stairs = None
 player = None
 fov_recompute = None
 game_state = None
@@ -411,7 +418,7 @@ def text_entry(text, width=50):
         window.print(0, text_height + 2, user_input)
 
 
-def menu(header, options, width):
+def menu(header, options, width, y_adjust=0):
     if len(options) > 26: raise ValueError('Cannot have a menu with more than 26 options.')
 
     # calculate total height for the header (after auto-wrap) and one line per option
@@ -435,7 +442,7 @@ def menu(header, options, width):
 
     # blit the contents of "window" to the root console
     x = int(SCREEN_WIDTH / 2 - width / 2)
-    y = int(SCREEN_HEIGHT / 2 - height / 2)
+    y = int(SCREEN_HEIGHT / 2 - height / 2) + y_adjust
     libtcod.console_blit(window, 0, 0, width, height, 0, x, y, 1.0, 0.7)
 
     # present the root console to the player and wait for a key-press
@@ -489,7 +496,7 @@ def handle_keys():
 
     if game_state == GS_PLAYING:
         # movement keys
-        if libtcod.console_is_key_pressed(libtcod.KEY_UP):
+        if key.vk == libtcod.KEY_UP:
             move(player, 0, -1)
             fov_recompute = True
 
@@ -573,29 +580,72 @@ def initialize_fov():
 
 def player_death(pc, death_text):
     # the game ended!
-    global game_state
-    message('You died!', libtcod.red)
+    global game_state, dungeon_map
+    died_txt = 'You died!'
+    if random.random() < OBAMA_CHANCE:
+        died_txt = "THANKS OBAMA"
+    message(died_txt, libtcod.red)
     game_state = GS_DEAD
-    # for added effect, transform the player into a corpse!
+    player.death = Death(player, death_text, game, dungeon_map)
+    # corpse time
     pc.char = '%'
     pc.color = libtcod.dark_red
 
-    # key = libtcod.console_wait_for_keypress(True)
+    #save to high score
+    thing = json2obj(json.dumps(player.death.__dict__))
+
+
+
+def load_scores_json():
+    raw = "[]"
+    if path.exists(SCORES_FILE_NAME):
+        raw = open(SCORES_FILE_NAME, "r").read()
+    return json.loads(raw)
 
 
 def tombstone():
     global player, game, dungeon_map
+    death = player.death
     death_screen = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
     death_screen.clear(bg=libtcod.black)
-    death_screen.print(0, 0, player.name)
-    death_screen.print(0, 1, "Score: " + str(game.score))
-    death_screen.print(0, 2, "Dungeon Level: " + str(dungeon_map.dungeon_level))
+    tombstone_lines = [
+        "----------\n",
+        "/          \\\n",
+        "/    REST    \\\n",
+        "/      IN      \\\n",
+        "/     PEACE      \\\n",
+        "/                  \\\n"
+    ]
+    grave_width = 16
+    x_coord = int(SCREEN_WIDTH / 2)
+    y_coord = 1
+    top_lines = len(tombstone_lines)
+    tombstone_lines.append(player.name)
+    tombstone_lines.append("Score: " + str(death.game.score))
+    tombstone_lines.append("Dungeon Level: " + str(death.floor.dungeon_level))
+    tombstone_lines.append("")
+    tombstone_lines = tombstone_lines + textwrap.wrap(death.epitath, grave_width)
+    for i in range(0, 5):
+        tombstone_lines.append("")
+    for line in tombstone_lines:
+        death_screen.print(x_coord, y_coord, line, libtcod.white, alignment=libtcod.CENTER)
+        y_coord += 1
+
+    for i in range(top_lines + 1, y_coord):
+        death_screen.print(int((SCREEN_WIDTH / 2) - (grave_width / 2) - 2), i, "|", libtcod.white)
+        death_screen.print(int((SCREEN_WIDTH / 2) + (grave_width / 2) + 1), i, "|", libtcod.white)
+    bottom = ""
+    for i in range(0, grave_width * 2):
+        bottom += "-"
+        death_screen.print(x_coord, y_coord, bottom, libtcod.white, alignment=libtcod.CENTER)
+
     death_screen.blit(root)
     libtcod.console_flush()
     libtcod.console_wait_for_keypress(True)
 
 
 def show_scores():
+    load_scores_json()
     libtcod.console_wait_for_keypress(True)
 
 
@@ -679,12 +729,13 @@ while not libtcod.console_is_window_closed():
         y = SCREEN_HEIGHT - 17
         con.print(x, y, title_text, libtcod.white, libtcod.black, libtcod.BKGND_OVERLAY)
         con.blit(root, x - 1, y - 1, x - 1, y - 1, len(title_text) + 2, 3, bg_alpha=0.7)
+        root.print(0, SCREEN_HEIGHT - 1, "By Dogsonofawolf", libtcod.black, libtcod.white)
         libtcod.console_flush(clear_color=libtcod.white)
         key = libtcod.console_wait_for_keypress(True)
         con.clear(bg=libtcod.black)
 
         # create an off-screen console that represents the menu's window
-        choice = menu('', ['NEW GAME', 'SCORES', 'QUIT'], 24)
+        choice = menu("\n " + title_text + "\n", ['NEW GAME', 'SCORES', 'QUIT'], 16, 11)
         if choice is 0:
             screen = Screen.GAME
         elif choice is 1:

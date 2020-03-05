@@ -1,4 +1,6 @@
 import tcod as libtcod
+from collections import namedtuple
+import json
 
 
 def random_choice_index(chances):  # choose one option from list of chances, returning its index
@@ -23,3 +25,10 @@ def random_choice(chances_dict):
     strings = chances_dict.keys()
 
     return strings[random_choice_index(chances)]
+
+
+# https://stackoverflow.com/questions/6578986/how-to-convert-json-data-into-a-python-object
+def _json_object_hook(d): return namedtuple('X', d.keys())(*d.values())
+
+
+def json2obj(data): return json.loads(data, object_hook=_json_object_hook)

@@ -1,6 +1,6 @@
 class Death:
-    def __init__(self, player, epitath, score, floor):
+    def __init__(self, player, epitath, game, floor):
         self.player = player
         self.epitath = epitath
-        self.score = score
+        self.game = game
         self.floor = floor
