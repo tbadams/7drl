@@ -5,6 +5,8 @@ import math
 import random
 from enum import Enum, auto
 from map import make_map
+from model.object import Object
+from map import is_blocked
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -93,48 +95,6 @@ class GameState:
 # player, inventory
 
 
-class Object:
-    # this is a generic object: the player, a monster, an item, the stairs...
-    # it's always represented by a character on screen.
-    def __init__(self, x, y, char, name, color, blocks=False, item=None, equipment=None):
-        self.name = name
-        self.blocks = blocks
-        self.x = x
-        self.y = y
-        self.char = char
-        self.color = color
-        self.item = item
-        if self.item:  # let the Item component know who owns it
-            self.item.owner = self
-
-        self.equipment = equipment
-        if self.equipment:  # let the Equipment component know who owns it
-            self.equipment.owner = self
-
-            # there must be an Item component for the Equipment component to work properly
-            self.item = Item()
-            self.item.owner = self
-
-    def move(self, dx, dy):
-        # move by the given amount if not blocked
-        if not is_blocked(self.x + dx, self.y + dy):
-            self.x += dx
-            self.y += dy
-        elif self is player:
-            message("Ouch! You blunder into a wall.", libtcod.orange)
-            player.fighter.take_damage(random.randint(1, WALL_DMG), "running into a wall")
-
-    def draw(self):
-        if libtcod.map_is_in_fov(fov_map, self.x, self.y):
-            # set the color and then draw the character that represents this object at its position
-            libtcod.console_set_default_foreground(con, self.color)
-            libtcod.console_put_char(con, self.x, self.y, self.char, libtcod.BKGND_NONE)
-
-    def clear(self):
-        # erase the character that represents this object
-        libtcod.console_put_char(con, self.x, self.y, ' ', libtcod.BKGND_NONE)
-
-
 class Character(Object):
     def __init__(self, x, y, char, name, color, blocks=False, fighter=None):
         super().__init__(x, y, char, name, color, blocks)
@@ -219,50 +179,57 @@ class Fighter:
             self.hp = self.max_hp
 
 
-class Item:
-    # an item that can be picked up and used.
-    def __init__(self, use_function=None):
-        self.use_function = use_function
-        self.owner = None
+def move(thing, dx, dy):
+    # move by the given amount if not blocked
+    global map
+    if not is_blocked(thing.x + dx, thing.y + dy, objects, map):
+        thing.x += dx
+        thing.y += dy
+    elif thing is player:
+        message("Ouch! You blunder into a wall.", libtcod.orange)
+        player.fighter.take_damage(random.randint(1, 10), "running into a wall")
 
-    def pick_up(self):
-        # add to the player's inventory and remove from the map
-        if len(inventory) >= 26:
-            message('Your inventory is full, cannot pick up ' + self.owner.name + '.', libtcod.red)
-        else:
-            inventory.append(self.owner)
-            objects.remove(self.owner)
-            message('You picked up a ' + self.owner.name + '!', libtcod.green)
 
-            # special case: automatically equip, if the corresponding equipment slot is unused
-            equipment = self.owner.equipment
-            if equipment and player.get_equipped_in_slot(equipment.slot) is None:
-                equipment.equip()
+def pick_up(item):
+    # add to the player's inventory and remove from the map
+    if len(inventory) >= 26:
+        message('Your inventory is full, cannot pick up ' + item.owner.name + '.', libtcod.red)
+    else:
+        inventory.append(item.owner)
+        objects.remove(item.owner)
+        message('You picked up a ' + item.owner.name + '!', libtcod.green)
 
-    def drop(self):
-        # special case: if the object has the Equipment component, dequip it before dropping
-        if self.owner.equipment:
-            self.owner.equipment.dequip()
+        # special case: automatically equip, if the corresponding equipment slot is unused
+        equipment = item.owner.equipment
+        if equipment and player.get_equipped_in_slot(equipment.slot) is None:
+            equipment.equip()
 
-        # add to the map and remove from the player's inventory. also, place it at the player's coordinates
-        objects.append(self.owner)
-        inventory.remove(self.owner)
-        self.owner.x = player.x
-        self.owner.y = player.y
-        message('You dropped a ' + self.owner.name + '.', libtcod.yellow)
 
-    def use(self):
-        # special case: if the object has the Equipment component, the "use" action is to equip/dequip
-        if self.owner.equipment:
-            self.owner.equipment.toggle_equip()
-            return
+def drop(item):
+    # special case: if the object has the Equipment component, dequip it before dropping
+    if item.owner.equipment:
+        item.owner.equipment.dequip()
 
-        # just call the "use_function" if it is defined
-        if self.use_function is None:
-            message('The ' + self.owner.name + ' cannot be used.')
-        else:
-            if self.use_function() != 'cancelled':
-                inventory.remove(self.owner)  # destroy after use, unless it was cancelled for some reason
+    # add to the map and remove from the player's inventory. also, place it at the player's coordinates
+    objects.append(item.owner)
+    inventory.remove(item.owner)
+    item.owner.x = player.x
+    item.owner.y = player.y
+    message('You dropped a ' + item.owner.name + '.', libtcod.yellow)
+
+
+def use(item):
+    # special case: if the object has the Equipment component, the "use" action is to equip/dequip
+    if item.owner.equipment:
+        item.owner.equipment.toggle_equip()
+        return
+
+    # just call the "use_function" if it is defined
+    if item.use_function is None:
+        message('The ' + item.owner.name + ' cannot be used.')
+    else:
+        if item.use_function() != 'cancelled':
+            inventory.remove(item.owner)  # destroy after use, unless it was cancelled for some reason
 
 
 class Equipment:
@@ -331,10 +298,10 @@ def render_all():
 
     # draw all objects in the list, except the player. we want it to
     # always appear over all other objects! so it's drawn later.
-    for object in objects:
-        if object != player:
-            object.draw()
-    player.draw()
+    for o in objects:
+        if o != player:
+            o.draw(con, fov_map)
+    player.draw(con, fov_map)
 
     # blit the contents of "con" to the root console and present it
     libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, MAP_Y)
@@ -522,19 +489,19 @@ def handle_keys():
     if game_state == GS_PLAYING:
         # movement keys
         if libtcod.console_is_key_pressed(libtcod.KEY_UP):
-            player.move(0, -1)
+            move(player, 0, -1)
             fov_recompute = True
 
         elif libtcod.console_is_key_pressed(libtcod.KEY_DOWN):
-            player.move(0, 1)
+            move(player, 0, 1)
             fov_recompute = True
 
         elif libtcod.console_is_key_pressed(libtcod.KEY_LEFT):
-            player.move(-1, 0)
+            move(player, -1, 0)
             fov_recompute = True
 
         elif libtcod.console_is_key_pressed(libtcod.KEY_RIGHT):
-            player.move(1, 0)
+            move(player, 1, 0)
             fov_recompute = True
         else:
             # test for other keys
@@ -544,20 +511,20 @@ def handle_keys():
                 # pick up an item
                 for object in objects:  # look for an item in the player's tile
                     if object.x == player.x and object.y == player.y and object.item:
-                        object.item.pick_up()
+                        pick_up(object.item)
                         break
 
             if key_char == 'i':
                 # show the inventory; if an item is selected, use it
                 chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel.\n')
                 if chosen_item is not None:
-                    chosen_item.use()
+                    use(chosen_item)
 
             if key_char == 'd':
                 # show the inventory; if an item is selected, drop it
                 chosen_item = inventory_menu('Press the key next to an item to drop it, or any other to cancel.\n')
                 if chosen_item is not None:
-                    chosen_item.drop()
+                    drop(chosen_item)
 
             if key_char == 'c':
                 # show character information
@@ -581,11 +548,13 @@ def handle_keys():
 
 def next_level():
     # advance to the next level
-    global dungeon_level, player, map
+    global dungeon_level, player, map, objects
 
     dungeon_level += 1
     message('You manage to avoid falling down the stairs.', libtcod.yellow)
-    map = make_map(MAP_WIDTH, MAP_HEIGHT, player)  # create a fresh new level!
+    floor = make_map(MAP_WIDTH, MAP_HEIGHT, player)  # create a fresh new level!
+    map = floor.tiles
+    objects = floor.objects
     initialize_fov()
 
 
@@ -613,30 +582,16 @@ def player_death(pc, death_text):
 
     # key = libtcod.console_wait_for_keypress(True)
 
-    # tombstone()
-
 
 def tombstone():
-    global player
+    global player, game
     death_screen = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
     death_screen.clear(bg=libtcod.black)
     death_screen.print(0, 0, player.name)
+    death_screen.print(0, 1, str(game.score))
     death_screen.blit(root)
     libtcod.console_flush()
     libtcod.console_wait_for_keypress(True)
-
-
-def is_blocked(x, y):
-    # first test the map tile
-    if map[x][y].blocked:
-        return True
-
-    # now check for any blocking objects
-    for object in objects:
-        if object.blocks and object.x == x and object.y == y:
-            return True
-
-    return False
 
 
 def show_scores():
@@ -664,11 +619,10 @@ def new_game():
     equipment_component.equip()
     obj.always_visible = True
 
-    # the list of objects starting with the playerc
-    objects = [player]
-
     # generate map (at this point it's not drawn to the screen)
-    map = make_map(MAP_WIDTH, MAP_HEIGHT, player)
+    floor = make_map(MAP_WIDTH, MAP_HEIGHT, player)
+    map = floor.tiles
+    objects = floor.objects
 
     # generate field of view map based on level map
     fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
@@ -693,7 +647,7 @@ def new_game():
 
         # erase all objects at their old locations, before they move
         for o in objects:
-            o.clear()
+            o.clear(con)
 
         # handle keys and exit game if needed
         player_action = handle_keys()

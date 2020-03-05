@@ -1,11 +1,13 @@
 import tcod as libtcod
 from util import random_choice
+from model.object import Object
 
 
 # map stuff
 class Floor:
     def __init__(self, tiles, objects):
-        pass
+        self.tiles = tiles
+        self.objects = objects
 
 
 class Tile:
@@ -38,7 +40,7 @@ class Rect:
                 self.y1 <= other.y2 and self.y2 >= other.y1)
 
 
-def is_blocked(x, y, objects):
+def is_blocked(x, y, objects, map):
     # first test the map tile
     if map[x][y].blocked:
         return True
@@ -77,7 +79,8 @@ def make_map(width, height, player):
 
 
 def make_map_rand_room(width, height, player, max_rooms=30, min_room_size=6, max_room_size=10):
-    # does objects have player??
+    # the list of objects starting with the player
+    objects = [player]
 
     # fill map with "blocked" tiles
     map = [[Tile(True)
@@ -143,12 +146,16 @@ def make_map_rand_room(width, height, player, max_rooms=30, min_room_size=6, max
             num_rooms += 1
 
     # create stairs at the center of the last room
-    # stairs = Object(new_x, new_y, '<', 'stairs', libtcod.white, always_visible=True)
-    # objects.append(stairs)
-    return map
+    stairs = Object(new_x, new_y, '<', 'stairs', libtcod.white, always_visible=True)
+    objects.append(stairs)
+    return Floor(map, objects)
 
 
-def make_map_test(width, height):
+def make_map_dir_cave(width, height, player, length, roughness, windiness, start_x=-1, start_y=2):
+    pass
+
+
+def make_map_test(width, height, player):
     # fill map with "blocked" tiles
     map = [[Tile(True)
             for y in range(height)]
@@ -160,7 +167,10 @@ def make_map_test(width, height):
     create_room(map, room1)
     create_room(map, room2)
     create_h_tunnel(map, 25, 55, 23)
-    return map
+    player.x=23
+    player.y=25
+
+    return Floor(map, [player])
 
 
 def from_dungeon_level(table, dungeon_level):
@@ -169,7 +179,6 @@ def from_dungeon_level(table, dungeon_level):
         if dungeon_level >= level:
             return value
     return 0
-
 
 # def place_objects(room, dungeon_level, objects):
 #     # this is where we decide the chance of each monster or item appearing.
