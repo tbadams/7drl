@@ -10,7 +10,6 @@ from enum import Enum, auto
 from map import make_map
 from model.object import Object
 from model.death import Death
-from map import is_blocked
 from util import pad
 import pickle
 import shelve
@@ -62,8 +61,8 @@ LEVEL_UP_FACTOR = 150
 # colors
 color_dark_wall = libtcod.Color(0, 0, 100)
 color_dark_ground = libtcod.Color(50, 50, 150)
-color_light_wall = libtcod.Color(130, 110, 50)
-color_light_ground = libtcod.Color(200, 180, 50)
+color_light_wall = libtcod.Color(200, 180, 50)
+color_light_ground = libtcod.Color(130, 110, 50)
 
 INVENTORY_MAX = 26
 WALL_DMG = 10
@@ -190,7 +189,7 @@ class Fighter:
 def move(thing, dx, dy):
     # move by the given amount if not blocked
     global dungeon_map
-    if not is_blocked(thing.x + dx, thing.y + dy, dungeon_map):
+    if not dungeon_map.is_blocked(thing.x + dx, thing.y + dy):
         thing.x += dx
         thing.y += dy
     elif thing is player:
@@ -546,10 +545,14 @@ def handle_keys():
                     '\nAttack: ' + str(player.fighter.power) + '\nDefense: ' + str(player.fighter.defense),
                     CHARACTER_SCREEN_WIDTH)
 
-            if key_char == '<':
+            if key_char == '.' and key.shift:
                 # go down stairs, if the player is on them
-                if dungeon_map.stairs.x == player.x and dungeon_map.stairs.y == player.y:
+                if dungeon_map.stairs_down.x == player.x and dungeon_map.stairs_down.y == player.y:
                     next_level()
+                else:
+                    message("You can't go down on that.", libtcod.white)
+            else:
+                print(key)
 
             return STRING_NO_ACTION
     elif game_state == GS_DEAD:
@@ -561,9 +564,10 @@ def next_level():
     # advance to the next level
     global dungeon_map, player
 
-    dungeon_map.dungeon_level += 1
+    next_dlevel = dungeon_map.dungeon_level + 1
     message('You manage to avoid falling down the stairs.', libtcod.yellow)
     dungeon_map = make_map(MAP_WIDTH, MAP_HEIGHT, player)
+    dungeon_map.dungeon_level = next_dlevel
     initialize_fov()
 
 

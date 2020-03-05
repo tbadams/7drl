@@ -2,6 +2,8 @@ import tcod as libtcod
 from util import random_choice
 from model.object import Object
 
+STAIRS_UP_NAME = 'stairs up'
+STAIRS_DOWN_NAME = 'stairs down'
 
 # map stuff
 class Floor:
@@ -10,6 +12,23 @@ class Floor:
         self.objects = objects
         self.dungeon_level = dlevel
         self.rooms = rooms
+        for o in objects:
+            if o.name is STAIRS_DOWN_NAME:
+                self.stairs_down = o
+            elif o.name is STAIRS_UP_NAME:
+                self.stairs_up = o
+
+    def is_blocked(self, x, y):
+        # first test the map tile
+        if self.tiles[x][y].blocked:
+            return True
+
+        # now check for any blocking objects
+        for o in self.objects:
+            if o.blocks and o.x == x and o.y == y:
+                return True
+
+        return False
 
 
 class Tile:
@@ -40,19 +59,6 @@ class Rect:
         # returns true if this rectangle intersects with another one
         return (self.x1 <= other.x2 and self.x2 >= other.x1 and
                 self.y1 <= other.y2 and self.y2 >= other.y1)
-
-
-def is_blocked(x, y, floor):
-    # first test the map tile
-    if floor.tiles[x][y].blocked:
-        return True
-
-    # now check for any blocking objects
-    for object in floor.objects:
-        if object.blocks and object.x == x and object.y == y:
-            return True
-
-    return False
 
 
 def create_room(tiles, room):
@@ -148,7 +154,7 @@ def make_map_rand_room(width, height, player, max_rooms=30, min_room_size=6, max
             num_rooms += 1
 
     # create stairs at the center of the last room
-    stairs = Object(new_x, new_y, '>', 'stairs', libtcod.white, always_visible=True)
+    stairs = Object(new_x, new_y, '>', STAIRS_DOWN_NAME, libtcod.white, always_visible=True)
     objects.append(stairs)
     return Floor(map, objects, rooms)
 
