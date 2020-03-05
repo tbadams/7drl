@@ -57,6 +57,8 @@ GS_DEAD = 'dead'
 # experience and level-ups
 LEVEL_UP_BASE = 200
 LEVEL_UP_FACTOR = 150
+DLEVEL_SCORE = 100
+DLEVEL_XP = 10
 
 # colors
 color_dark_wall = libtcod.Color(0, 0, 100)
@@ -562,8 +564,10 @@ def handle_keys():
 
 def next_level():
     # advance to the next level
-    global dungeon_map, player
+    global dungeon_map, player, game
 
+    player.fighter.xp += DLEVEL_XP * dungeon_map.dungeon_level
+    game.score += DLEVEL_SCORE * dungeon_map.dungeon_level
     next_dlevel = dungeon_map.dungeon_level + 1
     message('You manage to avoid falling down the stairs.', libtcod.yellow)
     dungeon_map = make_map(MAP_WIDTH, MAP_HEIGHT, player)
