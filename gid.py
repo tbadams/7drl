@@ -1,9 +1,6 @@
 import tcod as libtcod
 import tcod.event
 import textwrap
-import json
-from os import path
-
 import math
 import random
 from enum import Enum, auto
@@ -11,8 +8,9 @@ from map import make_map
 from model.object import Object
 from model.death import Death
 from util import pad
-import pickle
 import shelve
+from model.monsters import make_enemy, display_test
+from model.character import Character, Fighter
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -103,91 +101,6 @@ class GameState:
 # player, inventory
 
 
-class Character(Object):
-    def __init__(self, x, y, char, name, color, blocks=False, fighter=None):
-        super().__init__(x, y, char, name, color, blocks)
-        self.fighter = fighter
-        if self.fighter:
-            fighter.owner = self
-
-        self.level = 1
-        self.death = None
-
-    def get_all_equipped(self):  # returns a list of equipped items
-        if self == player:
-            equipped_list = []
-            for item in inventory:
-                if item.equipment and item.equipment.is_equipped:
-                    equipped_list.append(item.equipment)
-            return equipped_list
-        else:
-            return []  # other objects have no equipment
-
-    def get_equipped_in_slot(self, slot):  # returns the equipment in a slot, or None if it's empty
-        for obj in inventory:
-            if obj.equipment and obj.equipment.slot == slot and obj.equipment.is_equipped:
-                return obj.equipment
-        return None
-
-
-class Fighter:
-    # combat-related properties and methods (monster, player, NPC).
-    def __init__(self, hp, defense, power, xp, death_function=None, owner=None):
-        self.base_max_hp = hp
-        self.hp = hp
-        self.base_defense = defense
-        self.base_power = power
-        self.xp = xp
-        self.death_function = death_function
-        self.owner = owner
-
-    @property
-    def power(self):  # return actual power, by summing up the bonuses from all equipped items
-        bonus = sum(equipment.power_bonus for equipment in self.owner.get_all_equipped())
-        return self.base_power + bonus
-
-    @property
-    def defense(self):  # return actual defense, by summing up the bonuses from all equipped items
-        bonus = sum(equipment.defense_bonus for equipment in self.owner.get_all_equipped())
-        return self.base_defense + bonus
-
-    @property
-    def max_hp(self):  # return actual max_hp, by summing up the bonuses from all equipped items
-        bonus = sum(equipment.max_hp_bonus for equipment in self.owner.get_all_equipped())
-        return self.base_max_hp + bonus
-
-    def attack(self, target):
-        # a simple formula for attack damage
-        damage = self.power - target.fighter.defense
-
-        if damage > 0:
-            # make the target take some damage
-            message(self.owner.name.capitalize() + ' attacks ' + target.name + ' for ' + str(damage) + ' hit points.')
-            target.fighter.take_damage(damage)
-        else:
-            message(self.owner.name.capitalize() + ' attacks ' + target.name + ' but it has no effect!')
-
-    def take_damage(self, damage, death_text):
-        # apply damage if possible
-        if damage > 0:
-            self.hp -= damage
-
-            # check for death. if there's a death function, call it
-            if self.hp <= 0:
-                function = self.death_function
-                if function is not None:
-                    function(self.owner, death_text)
-
-                if self.owner != player:  # yield experience to the player
-                    player.fighter.xp += self.xp
-
-    def heal(self, amount):
-        # heal by the given amount, without going over the maximum
-        self.hp += amount
-        if self.hp > self.max_hp:
-            self.hp = self.max_hp
-
-
 def move(thing, dx, dy):
     # move by the given amount if not blocked
     global dungeon_map
@@ -241,6 +154,18 @@ def use(item):
     else:
         if item.use_function() != 'cancelled':
             inventory.remove(item.owner)  # destroy after use, unless it was cancelled for some reason
+
+
+def attack(attacker, target):
+    # a simple formula for attack damage
+    damage = attacker.fighter.power - target.fighter.defense
+
+    if damage > 0:
+        # make the target take some damage
+        message(attacker.name.capitalize() + ' attacks ' + target.name + '.')
+        target.fighter.take_damage(damage)
+    else:
+        message(attacker.name.capitalize() + ' attacks ' + target.name + ' but misses.')
 
 
 class Equipment:
@@ -318,7 +243,7 @@ def render_all():
     libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, MAP_Y)
 
     # prepare to render the GUI panel
-    panel.clear(bg=libtcod.black)
+    panel.clear(bg=libtcod.darkest_grey)
     msg_panel.clear(bg=libtcod.black)
 
     # print the game messages, one line at a time
@@ -329,7 +254,7 @@ def render_all():
 
     # show the player's stats
     panel.print(1, 1, 'HP: ' + str(player.fighter.hp) + "/" + str(player.fighter.max_hp),
-                libtcod.light_red)
+                libtcod.white)
     panel.print(1, 2, player.name + '     Score: ' + str(game.score))
     panel.print(1, 3, 'Dungeon level ' + str(dungeon_map.dungeon_level))
 
@@ -359,7 +284,7 @@ def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
 
 def get_names_under_mouse():
     # return a string with the names of all objects under the mouse
-    global dungeon_map
+    global dungeon_map, fov_map
     mouse = libtcod.mouse_get_status()
     (x, y) = (mouse.cx, mouse.cy)
 
@@ -483,7 +408,7 @@ def inventory_menu(header):
 
 
 def handle_keys():
-    global fov_recompute, screen, dungeon_map
+    global fov_recompute, screen, dungeon_map, player
 
     key = libtcod.console_wait_for_keypress(True)
 
@@ -495,6 +420,7 @@ def handle_keys():
         confirm = menu("Abandon the quest?", ["Yes", "No"], MENU_WIDTH)
         if confirm == 0:
             screen = Screen.MAIN_MENU
+            player_death(player, "quit")
             return STRING_EXIT
         return STRING_NO_ACTION
 
@@ -546,15 +472,16 @@ def handle_keys():
                     '\nExperience to level up: ' + str(level_up_xp) + '\n\nMaximum HP: ' + str(player.fighter.max_hp) +
                     '\nAttack: ' + str(player.fighter.power) + '\nDefense: ' + str(player.fighter.defense),
                     CHARACTER_SCREEN_WIDTH)
-
-            if key_char == '.' and key.shift:
+            if key_char == '/' and key.shift:
+                show_help()
+            if key_char == '.' and key.shift:  # >
                 # go down stairs, if the player is on them
                 if dungeon_map.stairs_down.x == player.x and dungeon_map.stairs_down.y == player.y:
                     next_level()
                 else:
                     message("You can't go down on that.", libtcod.white)
 
-            if key_char == ',' and key.shift:
+            if key_char == ',' and key.shift:  # <
                 if dungeon_map.stairs_up.x == player.x and dungeon_map.stairs_up.y == player.y:
                     message("You attempt to climb the stairs but the effort destroys your already frail body.",
                             libtcod.yellow)
@@ -568,6 +495,18 @@ def handle_keys():
     elif game_state == GS_DEAD:
         screen = Screen.TOMBSTONE
         return STRING_EXIT
+
+
+def show_help():
+    msgbox("Controls:\n\n"
+           "ARROWS = MOVEMENT\n"
+           "i      = INVENTORY\n"
+           "c      = CHARACTER SCREEN\n"
+           "g      = GET ITEMS\n"
+           "d      = DROP ITEMS\n"
+           "<      = GO UP\n"
+           ">      = GO DOWN\n"
+           "?      = THIS MESSAGE")
 
 
 def next_level():
@@ -784,6 +723,9 @@ while not libtcod.console_is_window_closed():
             screen = Screen.SCORES
         elif choice is 2:
             break
+        # else:
+        #     display_test(root, SCREEN_WIDTH, SCREEN_HEIGHT)
+        #     screen = Screen.MAIN_MENU
     elif screen == Screen.GAME:
         new_game()
     elif screen == Screen.TOMBSTONE:

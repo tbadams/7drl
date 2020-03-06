@@ -86,7 +86,7 @@ templates = [("orc", 'O', libtcod.dark_green, 30, 2, 8, 100),
              ("pit viper", 's', libtcod.black, 30, 2, 8, 100),
              ("Barnie the Dinosaur", 'D', libtcod.purple),
              ("Ronald McDondald", 'R', libtcod.red),
-             ("Grimace", 'G', 'dark_purple'),
+             ("Grimace", 'G', libtcod.dark_purple),
              ("Hamburgler", 'H', libtcod.white),
              ("mime dressed as Adolf Hitler", 'H', libtcod.sepia),
              ("Saskatchewan, Canada", 'A', libtcod.light_red),
@@ -95,8 +95,27 @@ templates = [("orc", 'O', libtcod.dark_green, 30, 2, 8, 100),
              ("murder clown", 'C', libtcod.crimson),
              ("hobo clown", 'C', libtcod.dark_orange),
              ("Franz Kafka", "K", libtcod.darkest_crimson),
-             ("Pullitzer Prize-winning author and film critic Roger Ebert", 'E', libtcod.light_grey)
+             ("Pullitzer Prize-winning author and film critic Roger Ebert", 'E', libtcod.light_grey),
+             ("Grey", 'g', libtcod.grey),
+             ("gladiator", 'g', libtcod.gold),
+             ("wampa", 'W', libtcod.white)
              ]
+
 
 def make_enemy(floor):
     template = random_choice_index(templates)
+
+
+def display_test(con, width, height):
+    con.clear(bg=libtcod.lightest_grey)
+    templates.sort(key=lambda t: (t[1], t[2]))
+    i = 0
+    for y in range(0, height):
+        for x in range(0, width):
+            if i >= len(templates):
+                break
+            t = templates[i]
+            con.print(x, y, t[1], t[2])
+            i += 1
+    libtcod.console_flush()
+    libtcod.console_wait_for_keypress(True)
