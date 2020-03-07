@@ -472,6 +472,9 @@ def handle_keys():
                     '\nExperience to level up: ' + str(level_up_xp) + '\n\nMaximum HP: ' + str(player.fighter.max_hp) +
                     '\nAttack: ' + str(player.fighter.power) + '\nDefense: ' + str(player.fighter.defense),
                     CHARACTER_SCREEN_WIDTH)
+            if key_char == 'l':
+                while True:
+                    render_all()
             if key_char == '/' and key.shift:
                 show_help()
             if key_char == '.' and key.shift:  # >
@@ -504,6 +507,7 @@ def show_help():
            "c      = CHARACTER SCREEN\n"
            "g      = GET ITEMS\n"
            "d      = DROP ITEMS\n"
+           "l      = LOOK (MOUSE)"
            "<      = GO UP\n"
            ">      = GO DOWN\n"
            "?      = THIS MESSAGE")
@@ -643,7 +647,7 @@ def new_game():
     # create object representing the player
     fighter_component = Fighter(hp=10, defense=1, power=2, xp=0, death_function=player_death)
 
-    player = Character(0, 0, '@', name, libtcod.white, blocks=True, fighter=fighter_component)
+    player = Character(0, 0, '@', name, libtcod.white, fighter=fighter_component, inventory=inventory)
 
     equipment_component = Equipment(slot='right hand', power_bonus=1)
     obj = Object(0, 0, '-', 'rolled-up newspaper', libtcod.light_grey, equipment=equipment_component)

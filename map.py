@@ -1,6 +1,7 @@
 import tcod as libtcod
 from util import random_choice
 from model.object import Object
+from model.monsters import make_enemy
 
 STAIRS_UP_NAME = 'stairs up'
 STAIRS_DOWN_NAME = 'stairs down'
@@ -99,6 +100,8 @@ def make_map_rand_room(width, height, player, max_rooms=30, min_room_size=6, max
     rooms = []
     num_rooms = 0
 
+    floor = Floor(map, objects, rooms)
+
     for r in range(max_rooms):
         # random width and height
         w = libtcod.random_get_int(0, min_room_size, max_room_size)
@@ -123,7 +126,7 @@ def make_map_rand_room(width, height, player, max_rooms=30, min_room_size=6, max
             create_room(map, new_room)
 
             # add some contents to this room, such as monsters
-            # place_objects(map, new_room)
+            place_objects(new_room, floor)
 
             # center coordinates of new room, will be useful later
             (new_x, new_y) = new_room.center()
@@ -191,36 +194,39 @@ def from_dungeon_level(table, dungeon_level):
             return value
     return 0
 
-# def place_objects(room, dungeon_level, objects):
-#     # this is where we decide the chance of each monster or item appearing.
-#
-#     # maximum number of monsters per room
-#     max_monsters = from_dungeon_level([[2, 1], [3, 4], [5, 6]])
-#
-#     # chance of each monster
-#     monster_chances = {'orc': 80, 'troll': from_dungeon_level([[15, 3], [30, 5], [60, 7]])}
-#
-#     # maximum number of items per room
-#     max_items = from_dungeon_level([[1, 1], [2, 4]])
-#
-#     # chance of each item (by default they have a chance of 0 at level 1, which then goes up)
-#     item_chances = {'heal': 35,
-#                     'lightning': from_dungeon_level([[25, 4]]),
-#                     'fireball': from_dungeon_level([[25, 6]]),
-#                     'confuse': from_dungeon_level([[10, 2]]),
-#                     'sword': from_dungeon_level([[5, 4]]),
-#                     'shield': from_dungeon_level([[15, 8]])}
-#
-#     # choose random number of monsters
-#     num_monsters = libtcod.random_get_int(0, 0, max_monsters)
-#
-#     for i in range(num_monsters):
-#         # choose random spot for this monster
-#         x = libtcod.random_get_int(0, room.x1 + 1, room.x2 - 1)
-#         y = libtcod.random_get_int(0, room.y1 + 1, room.y2 - 1)
-#
-#         # only place it if the tile is not blocked
-#         if not is_blocked(x, y):
+
+def place_objects(room, dungeon_level):
+    #     # this is where we decide the chance of each monster or item appearing.
+    #
+    #     # maximum number of monsters per room
+    max_monsters = from_dungeon_level([[2, 1], [3, 4], [5, 6]], dungeon_level.dungeon_level)
+    #
+    #     # chance of each monster
+    #     monster_chances = {'orc': 80, 'troll': from_dungeon_level([[15, 3], [30, 5], [60, 7]])}
+    #
+    #     # maximum number of items per room
+    max_items = from_dungeon_level([[1, 1], [2, 4]], dungeon_level.dungeon_level)
+    #
+    #     # chance of each item (by default they have a chance of 0 at level 1, which then goes up)
+    #     item_chances = {'heal': 35,
+    #                     'lightning': from_dungeon_level([[25, 4]]),
+    #                     'fireball': from_dungeon_level([[25, 6]]),
+    #                     'confuse': from_dungeon_level([[10, 2]]),
+    #                     'sword': from_dungeon_level([[5, 4]]),
+    #                     'shield': from_dungeon_level([[15, 8]])}
+    #
+    #     # choose random number of monsters
+    num_monsters = libtcod.random_get_int(0, 0, max_monsters)
+    #
+    for i in range(num_monsters):
+        # choose random spot for this monster
+        x = libtcod.random_get_int(0, room.x1 + 1, room.x2 - 1)
+        y = libtcod.random_get_int(0, room.y1 + 1, room.y2 - 1)
+
+        #         # only place it if the tile is not blocked
+        if not dungeon_level.is_blocked(x, y):
+            mook = make_enemy(x, y, dungeon_level)
+            dungeon_level.objects.append(mook)
 #             choice = random_choice(monster_chances)
 #             if choice == 'orc':
 #                 # create an orc

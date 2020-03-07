@@ -3,8 +3,8 @@ from model.object import Object
 
 
 class Character(Object):
-    def __init__(self, x, y, char, name, color, blocks=False, fighter=None, inventory=None):
-        super().__init__(x, y, char, name, color, blocks)
+    def __init__(self, x, y, char, name, color, fighter=None, inventory=None):
+        super().__init__(x, y, char, name, color, True)
         self.fighter = fighter
         if self.fighter:
             fighter.owner = self
