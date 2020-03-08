@@ -2,6 +2,7 @@ import tcod as libtcod
 from model.object import Object, Layer
 from util import random_choice_index, random_choice
 from msg import Message
+import math
 
 
 def default_death(monster, death_text):
@@ -19,7 +20,7 @@ def default_death(monster, death_text):
 
 
 class Character(Object):
-    def __init__(self, x, y, char, name, color, fighter, inventory=None):
+    def __init__(self, x, y, char, name, color, fighter, ai=None, inventory=None):
         super().__init__(x, y, char, name, color, True, fighter=fighter)
         if self.fighter:
             fighter.owner = self
@@ -28,6 +29,9 @@ class Character(Object):
         if inventory is None:
             inventory = []
         self.inventory = inventory
+        self.ai = ai
+        if self.ai:
+            self.ai.owner = self
 
         self.level = 1
         self.death = None
@@ -47,6 +51,75 @@ class Character(Object):
             if obj.equipment and obj.equipment.slot == slot and obj.equipment.is_equipped:
                 return obj.equipment
         return None
+
+    def move_towards(self, target_x, target_y, dungeon_map):
+        game_map = dungeon_map.tiles
+        entities = dungeon_map.objects
+        dx = target_x - self.x
+        dy = target_y - self.y
+        distance = math.sqrt(dx ** 2 + dy ** 2)
+
+        dx = int(round(dx / distance))
+        dy = int(round(dy / distance))
+
+        if not (dungeon_map.is_blocked(self.x + dx, self.y + dy) or
+                    get_blocking_entities_at_location(entities, self.x + dx, self.y + dy)):
+            self.move(dx, dy)
+
+    def distance(self, x, y):
+        return math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
+
+    def distance_to(self, other):
+        dx = other.x - self.x
+        dy = other.y - self.y
+        return math.sqrt(dx ** 2 + dy ** 2)
+
+    def move_astar(self, target, dungeon_map):
+        game_map = dungeon_map.tiles
+        entities = dungeon_map.objects
+        # Create a FOV map that has the dimensions of the map
+        width = len(game_map)
+        height = len(game_map[0])
+        fov = libtcod.map_new(width, height)
+
+        # Scan the current map each turn and set all the walls as unwalkable
+        for y1 in range(height):
+            for x1 in range(width):
+                libtcod.map_set_properties(fov, x1, y1, not game_map[x1][y1].block_sight,
+                                           not game_map[x1][y1].blocked)
+
+        # Scan all the objects to see if there are objects that must be navigated around
+        # Check also that the object isn't self or the target (so that the start and the end points are free)
+        # The AI class handles the situation if self is next to the target so it will not use this A* function anyway
+        for entity in entities:
+            if entity.blocks and entity != self and entity != target:
+                # Set the tile as a wall so it must be navigated around
+                libtcod.map_set_properties(fov, entity.x, entity.y, True, False)
+
+        # Allocate a A* path
+        # The 1.41 is the normal diagonal cost of moving, it can be set as 0.0 if diagonal moves are prohibited
+        my_path = libtcod.path_new_using_map(fov, 1.41)
+
+        # Compute the path between self's coordinates and the target's coordinates
+        libtcod.path_compute(my_path, self.x, self.y, target.x, target.y)
+
+        # Check if the path exists, and in this case, also the path is shorter than 25 tiles
+        # The path size matters if you want the monster to use alternative longer paths (for example through other rooms) if for example the player is in a corridor
+        # It makes sense to keep path size relatively low to keep the monsters from running around the map if there's an alternative path really far away
+        if not libtcod.path_is_empty(my_path) and libtcod.path_size(my_path) < 25:
+            # Find the next coordinates in the computed full path
+            x, y = libtcod.path_walk(my_path, True)
+            if x or y:
+                # Set self's coordinates to the next path tile
+                self.x = x
+                self.y = y
+        else:
+            # Keep the old move function as a backup so that if there are no paths (for example another monster blocks a corridor)
+            # it will still try to move towards the player (closer to the corridor opening)
+            self.move_towards(target.x, target.y, dungeon_map)
+
+            # Delete the path to free memory
+        libtcod.path_delete(my_path)
 
 
 class Fighter:
@@ -114,17 +187,17 @@ class Fighter:
 
 
 class BasicMonster:
-    def take_turn(self, target, fov_map, game_map, entities):
+    def take_turn(self, target, fov_map, game_map):
         results = []
 
         monster = self.owner
         if libtcod.map_is_in_fov(fov_map, monster.x, monster.y):
 
             if monster.distance_to(target) >= 2:
-                monster.move_astar(target, entities, game_map)
+                monster.move_astar(target, game_map)
 
             elif target.fighter.hp > 0:
-                attack_results = monster.fighter.attack(target)
+                attack_results = monster.fighter.attack(monster, target)
                 results.extend(attack_results)
 
         return results
@@ -246,7 +319,7 @@ def make_enemy(x, y, floor):
     template = random_choice_index(templates)
     fighter_component = Fighter(hp=20, defense=0, power=4, xp=35)
     ai_component = BasicMonster()
-    enemy = Character(x, y, fighter=fighter_component, *template.to_args())
+    enemy = Character(x, y, fighter=fighter_component, *template.to_args(), ai=ai_component)
     return enemy
 
 
@@ -263,3 +336,10 @@ def display_test(con, width, height):
             i += 1
     libtcod.console_flush()
     libtcod.console_wait_for_keypress(True)
+
+def get_blocking_entities_at_location(entities, destination_x, destination_y):
+    for entity in entities:
+        if entity.blocks and entity.x == destination_x and entity.y == destination_y:
+            return entity
+
+    return None

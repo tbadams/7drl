@@ -17,6 +17,7 @@ class Object:
         self.item = item
         self.always_visible = always_visible
         self.fighter = fighter
+        self.ai = None
         if self.item:  # let the Item component know who owns it
             self.item.owner = self
 

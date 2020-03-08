@@ -45,6 +45,7 @@ LIMIT_FPS = 20  # 20 frames-per-second maximum
 # action strings
 STRING_EXIT = 'exit'
 STRING_NO_ACTION = 'didnt-take-turn'
+STRING_ACTION = 'took-turn'
 
 # game state strings
 
@@ -440,18 +441,22 @@ def handle_keys():
         if key.vk == libtcod.KEY_UP:
             move(player, 0, -1)
             fov_recompute = True
+            return STRING_ACTION
 
         elif libtcod.console_is_key_pressed(libtcod.KEY_DOWN):
             move(player, 0, 1)
             fov_recompute = True
+            return STRING_ACTION
 
         elif libtcod.console_is_key_pressed(libtcod.KEY_LEFT):
             move(player, -1, 0)
             fov_recompute = True
+            return STRING_ACTION
 
         elif libtcod.console_is_key_pressed(libtcod.KEY_RIGHT):
             move(player, 1, 0)
             fov_recompute = True
+            return STRING_ACTION
         else:
             # test for other keys
             key_char = chr(key.c)
@@ -462,25 +467,33 @@ def handle_keys():
                     for msg in player.fighter.attack(player, target):
                         as_args = msg.as_args()
                         message(*as_args)
+                else:
+                    return STRING_NO_ACTION
 
             if key_char == 'g':
                 # pick up an item
                 for object in dungeon_map.objects:  # look for an item in the player's tile
                     if object.x == player.x and object.y == player.y and object.item:
                         pick_up(object.item)
-                        break
+                        return STRING_ACTION
+                return STRING_NO_ACTION
+
 
             if key_char == 'i':
                 # show the inventory; if an item is selected, use it
                 chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel.\n')
                 if chosen_item is not None:
                     use(chosen_item)
+                else:
+                    return STRING_NO_ACTION
 
             if key_char == 'd':
                 # show the inventory; if an item is selected, drop it
                 chosen_item = inventory_menu('Press the key next to an item to drop it, or any other to cancel.\n')
                 if chosen_item is not None:
                     drop(chosen_item)
+                else:
+                    return STRING_NO_ACTION
 
             if key_char == 'c':
                 # show character information
@@ -490,17 +503,21 @@ def handle_keys():
                     '\nExperience to level up: ' + str(level_up_xp) + '\n\nMaximum HP: ' + str(player.fighter.max_hp) +
                     '\nAttack: ' + str(player.fighter.power) + '\nDefense: ' + str(player.fighter.defense),
                     CHARACTER_SCREEN_WIDTH)
+                return STRING_NO_ACTION
             if key_char == 'l':
-                while True:
-                    render_all()
+                # while True:
+                #     render_all()
+                return STRING_NO_ACTION
             if key_char == '/' and key.shift:
                 show_help()
+                return STRING_NO_ACTION
             if key_char == '.' and key.shift:  # >
                 # go down stairs, if the player is on them
                 if dungeon_map.stairs_down.x == player.x and dungeon_map.stairs_down.y == player.y:
                     next_level()
                 else:
                     message("You can't go down on that.", libtcod.white)
+                    return STRING_NO_ACTION
 
             if key_char == ',' and key.shift:  # <
                 if dungeon_map.stairs_up.x == player.x and dungeon_map.stairs_up.y == player.y:
@@ -509,10 +526,12 @@ def handle_keys():
                     player.fighter.take_damage(100, "collapsed from over-exertion")
                 else:
                     message("You can't get high here.", libtcod.white)
+                    return STRING_NO_ACTION
             else:
                 print(key)
+                return STRING_NO_ACTION
 
-            return STRING_NO_ACTION
+            return STRING_ACTION
     elif game_state == GS_DEAD:
         screen = Screen.TOMBSTONE
         return STRING_EXIT
@@ -714,6 +733,14 @@ def main_loop(dungeon_map, game):
             game.time += 1
             if game.time % 10 == 0:  # Score from time survived
                 game.score += 1
+            # npc turns
+            for entity in dungeon_map.objects:
+                if entity.ai:
+                    enemy_turn_results = entity.ai.take_turn( player, fov_map, dungeon_map)
+                    for result in enemy_turn_results:
+                        message(*result.as_args())
+        else:
+            print("defer turn")
 
 
 #############################################
