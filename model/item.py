@@ -1,5 +1,6 @@
-from msg import Message
 import tcod as libtcod
+
+from msg import Message
 
 
 class Item:

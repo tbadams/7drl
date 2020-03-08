@@ -1,9 +1,11 @@
-import tcod as libtcod
-from model.object import Object, Layer
-from util import random_choice_index, random_choice
-from msg import Message
 import math
 import random
+
+import tcod as libtcod
+
+from model.object import Object, Layer
+from msg import Message
+from util import random_choice_index
 
 
 def default_death(monster, death_text):

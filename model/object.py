@@ -1,7 +1,8 @@
+from enum import auto, IntEnum
+
 import tcod as libtcod
-import random
+
 from model.item import Item
-from enum import Enum, auto, IntEnum
 
 
 class Object:

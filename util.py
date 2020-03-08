@@ -1,7 +1,6 @@
-import tcod as libtcod
-from collections import namedtuple
 import json
 import random
+from collections import namedtuple
 
 
 def random_choice_index(chances):  # choose one option from list of chances, returning its index

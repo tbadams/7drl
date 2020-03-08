@@ -1,8 +1,8 @@
 import tcod as libtcod
-from util import random_choice
-from model.object import Object
+
 from model.character import make_enemy
 from model.item import Item
+from model.object import Object
 
 STAIRS_UP_NAME = 'stairs up'
 STAIRS_DOWN_NAME = 'stairs down'

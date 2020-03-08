@@ -1,15 +1,26 @@
+import random
+import shelve
+import textwrap
+from enum import Enum, auto
+
 import tcod as libtcod
 import tcod.event
-import textwrap
-import math
-import random
-from enum import Enum, auto
+
 from map import make_map, cardinal_names
-from model.object import Object
+from model.character import Character, Fighter
 from model.death import Death
+from model.object import Object
 from util import pad
-import shelve
-from model.character import Character, Fighter, make_enemy, display_test
+import os
+import sys
+
+try:
+    user_paths = os.environ['PYTHONPATH'].split(os.pathsep)
+except KeyError:
+    user_paths = []
+print(user_paths)
+
+print(sys.path)
 
 VERSION = "1.01"
 
