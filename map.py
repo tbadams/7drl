@@ -176,12 +176,12 @@ def place_objects(room, dungeon_level):
 #             objects.append(monster)
 #
 #     # choose random number of items
-#     num_items = libtcod.random_get_int(0, 0, max_items)
+    num_items = libtcod.random_get_int(None, 0, max_items)
 #
-#     for i in range(num_items):
-#         # choose random spot for this item
-#         x = libtcod.random_get_int(0, room.x1 + 1, room.x2 - 1)
-#         y = libtcod.random_get_int(0, room.y1 + 1, room.y2 - 1)
+    for i in range(num_items):
+        # choose random spot for this item
+        x = libtcod.random_get_int(0, room.x1 + 1, room.x2 - 1)
+        y = libtcod.random_get_int(0, room.y1 + 1, room.y2 - 1)
 #
 #         # only place it if the tile is not blocked
 #         if not is_blocked(x, y, objects):

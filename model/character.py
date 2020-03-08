@@ -3,6 +3,7 @@ from model.object import Object, Layer
 from util import random_choice_index, random_choice
 from msg import Message
 import math
+import random
 
 
 def default_death(monster, death_text):
@@ -64,7 +65,27 @@ class Character(Object):
 
         if not (dungeon_map.is_blocked(self.x + dx, self.y + dy) or
                 get_blocking_entities_at_location(entities, self.x + dx, self.y + dy)):
-            self.move(dx, dy)
+            return self.move(dx, dy, dungeon_map)
+        return []
+
+    def move(self, dx, dy, dungeon_map):
+        # move by the given amount if not blocked
+        target_x = self.x + dx
+        target_y = self.y + dy
+        if not dungeon_map.is_blocked(target_x, target_y):
+            self.x += dx
+            self.y += dy
+        else:
+            possible_blockers = dungeon_map.get_stuff(target_x, target_y)
+            blocker = None
+            if len(possible_blockers) > 0:
+                blocker = possible_blockers[0]
+            blocker_name = "a wall"
+            if blocker is not None:
+                blocker_name = str(blocker)
+            msgs = [Message(self.name + "slams into " + blocker_name + ".", libtcod.orange)]
+            msgs.extend(self.fighter.take_damage(random.randint(1, 5), "running into " + blocker_name))
+            return msgs
 
     def distance(self, x, y):
         return math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
@@ -75,6 +96,7 @@ class Character(Object):
         return math.sqrt(dx ** 2 + dy ** 2)
 
     def move_astar(self, target, dungeon_map):
+        msgs = []
         game_map = dungeon_map.tiles
         entities = dungeon_map.objects
         # Create a FOV map that has the dimensions of the map
@@ -116,10 +138,11 @@ class Character(Object):
         else:
             # Keep the old move function as a backup so that if there are no paths (for example another monster blocks a corridor)
             # it will still try to move towards the player (closer to the corridor opening)
-            self.move_towards(target.x, target.y, dungeon_map)
+            msgs = self.move_towards(target.x, target.y, dungeon_map)
 
             # Delete the path to free memory
         libtcod.path_delete(my_path)
+        return msgs
 
 
 class Fighter:
@@ -161,8 +184,10 @@ class Fighter:
 
                 function = self.death_function
                 if function is not None:
-                    return function(self.owner, death_text)
-        return None
+                    msg = function(self.owner, death_text)
+                    self.death_function = None # you can only die once
+                    return [msg]
+        return []
 
     def heal(self, amount):
         # heal by the given amount, without going over the maximum
@@ -173,14 +198,14 @@ class Fighter:
     def attack(self, attacker, target):
         # a simple formula for attack damage
         msgs = []
-        damage = attacker.fighter.power - target.fighter.defense
+        attack = random.randint(0,attacker.fighter.power)
+        defense = random.randint(0, target.fighter.defense)
+        damage = attack - defense
 
         if damage > 0:
             # make the target take some damage
             msgs = [Message(attacker.name.capitalize() + ' attacks ' + target.name + '.', libtcod.yellow)]
-            death_msg = target.fighter.take_damage(damage)
-            if death_msg is not None:
-                msgs.append(death_msg)
+            msgs.extend(target.fighter.take_damage(damage))
             return msgs
         else:
             return [Message(attacker.name.capitalize() + ' attacks ' + target.name + ' but misses.', libtcod.yellow)]
@@ -198,7 +223,7 @@ class BasicMonster:
         if libtcod.map_is_in_fov(fov_map, monster.x, monster.y):
 
             if monster.distance_to(target) >= 2:
-                monster.move_astar(target, game_map)
+                results.extend(monster.move_astar(target, game_map))
 
             elif target.fighter.hp > 0:
                 attack_results = monster.fighter.attack(monster, target)

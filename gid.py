@@ -11,6 +11,8 @@ from util import pad
 import shelve
 from model.character import Character, Fighter, make_enemy, display_test
 
+VERSION = "1.01"
+
 # actual size of the window
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 52
@@ -66,7 +68,7 @@ color_light_ground = libtcod.Color(130, 110, 50)
 
 INVENTORY_MAX = 26
 WALL_DMG = 10
-OBAMA_CHANCE = 0.01
+OBAMA_CHANCE = 0.1
 
 SCORES_FILE_NAME = "scores.json"
 SCORE_KEY = "score"
@@ -485,6 +487,7 @@ def handle_keys():
                     for msg in player.fighter.attack(player, target):
                         as_args = msg.as_args()
                         message(*as_args)
+                    return STRING_ACTION
                 else:
                     return STRING_NO_ACTION
 
@@ -498,7 +501,7 @@ def handle_keys():
 
             if key_char == 'i':
                 # show the inventory; if an item is selected, use it
-                chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel.\n')
+                chosen_item = inventory_menu('Use item:\n')
                 if chosen_item is not None:
                     use(chosen_item)
                 else:
@@ -506,7 +509,7 @@ def handle_keys():
 
             if key_char == 'd':
                 # show the inventory; if an item is selected, drop it
-                chosen_item = inventory_menu('Press the key next to an item to drop it, or any other to cancel.\n')
+                chosen_item = inventory_menu('Drop item:\n')
                 if chosen_item is not None:
                     drop(chosen_item)
                 else:
@@ -568,7 +571,7 @@ def show_help():
            "c      = CHARACTER SCREEN\n"
            "g      = GET ITEMS\n"
            "d      = DROP ITEMS\n"
-           "l      = LOOK (MOUSE)\n"
+           # "l      = LOOK (MOUSE)\n"
            "<      = GO UP\n"
            ">      = GO DOWN\n"
            ".      = NO ACTION"
@@ -582,7 +585,11 @@ def next_level():
     player.fighter.xp += DLEVEL_XP * dungeon_map.dungeon_level
     game.score += DLEVEL_SCORE * dungeon_map.dungeon_level
     next_dlevel = dungeon_map.dungeon_level + 1
-    message('You manage to avoid falling down the stairs.', libtcod.yellow)
+    if random.random() < 0.1:
+        message("You tumble down the stairs.", libtcod.orange)
+        player.fighter.take_damage(random.randint(1, 4))
+    else:
+        message('You manage to avoid falling down the stairs.', libtcod.white)
     dungeon_map = make_map(MAP_WIDTH, MAP_HEIGHT, player)
     dungeon_map.dungeon_level = next_dlevel
     initialize_fov()
@@ -772,6 +779,8 @@ def print_title(img):
     root.clear(fg=libtcod.white, bg=libtcod.white)
     libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 2)
     root.print(0, SCREEN_HEIGHT - 1, "By Dogsonofawolf", libtcod.black, libtcod.white)
+    version_txt = "VERSION " + VERSION
+    root.print(SCREEN_WIDTH - len(version_txt) - 1, SCREEN_HEIGHT - 1, version_txt, libtcod.black, libtcod.white)
 
 
 #############################################
