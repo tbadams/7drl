@@ -457,6 +457,22 @@ def handle_keys():
             move(player, 1, 0)
             fov_recompute = True
             return STRING_ACTION
+        elif libtcod.console_is_key_pressed(libtcod.KEY_INSERT):
+            move(player, -1, -1)
+            fov_recompute = True
+            return STRING_ACTION
+        elif libtcod.console_is_key_pressed(libtcod.KEY_HOME):
+            move(player, 1, -1)
+            fov_recompute = True
+            return STRING_ACTION
+        elif libtcod.console_is_key_pressed(libtcod.KEY_END):
+            move(player, 1, 1)
+            fov_recompute = True
+            return STRING_ACTION
+        elif libtcod.console_is_key_pressed(libtcod.KEY_DELETE):
+            move(player, -1, 1)
+            fov_recompute = True
+            return STRING_ACTION
         else:
             # test for other keys
             key_char = chr(key.c)
@@ -539,7 +555,11 @@ def handle_keys():
 
 def show_help():
     msgbox("Controls:\n\n"
-           "ARROWS = MOVEMENT\n"
+           "ARROWS = NESW MOVEMENT\n"
+           "INSERT = NW\n"
+           "HOME   = NE\n"
+           "END    = SE\n"
+           "DELETE = SW\n"
            "a      = ATTACK\n"
            "i      = INVENTORY\n"
            "c      = CHARACTER SCREEN\n"

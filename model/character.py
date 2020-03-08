@@ -63,7 +63,7 @@ class Character(Object):
         dy = int(round(dy / distance))
 
         if not (dungeon_map.is_blocked(self.x + dx, self.y + dy) or
-                    get_blocking_entities_at_location(entities, self.x + dx, self.y + dy)):
+                get_blocking_entities_at_location(entities, self.x + dx, self.y + dy)):
             self.move(dx, dy)
 
     def distance(self, x, y):
@@ -185,6 +185,10 @@ class Fighter:
         else:
             return [Message(attacker.name.capitalize() + ' attacks ' + target.name + ' but misses.', libtcod.yellow)]
 
+
+    @staticmethod
+    def mook():
+        return Fighter(hp=10, defense=0, power=2, xp=35)
 
 class BasicMonster:
     def take_turn(self, target, fov_map, game_map):
@@ -317,7 +321,7 @@ templates = [MT("orc", 'O', libtcod.dark_green),
 
 def make_enemy(x, y, floor):
     template = random_choice_index(templates)
-    fighter_component = Fighter(hp=20, defense=0, power=4, xp=35)
+    fighter_component = Fighter(hp=20, defense=0, power=2, xp=35)
     ai_component = BasicMonster()
     enemy = Character(x, y, fighter=fighter_component, *template.to_args(), ai=ai_component)
     return enemy
@@ -336,6 +340,7 @@ def display_test(con, width, height):
             i += 1
     libtcod.console_flush()
     libtcod.console_wait_for_keypress(True)
+
 
 def get_blocking_entities_at_location(entities, destination_x, destination_y):
     for entity in entities:
