@@ -1,4 +1,4 @@
-# 7drl
+# 7drl (Currently "Guess I'll Die" for 2020)
 short roguelike game(s) for game jam
 
 Decided on a whim to try making a submission for the 2020 7DRL challenge.  
