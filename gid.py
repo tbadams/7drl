@@ -4,13 +4,12 @@ import textwrap
 import math
 import random
 from enum import Enum, auto
-from map import make_map
+from map import make_map, cardinal_names
 from model.object import Object
 from model.death import Death
 from util import pad
 import shelve
-from model.monsters import make_enemy, display_test
-from model.character import Character, Fighter
+from model.character import Character, Fighter, make_enemy, display_test
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -99,17 +98,41 @@ class GameState:
 
 
 # player, inventory
+def attack_menu(pc):
+    global dungeon_map, player
+    targets = []
+    for i in range(-1, 2):
+        for j in range(-1, 2):
+            stuff = dungeon_map.get_stuff(pc.x + i, pc.y + j)
+            targets += filter(lambda o: o.fighter and o != player, stuff)
+    if len(targets) == 0:
+        message("You can't hit that.", libtcod.white)
+    else:
+        target_choice = menu("Attack:",
+                             list(map(lambda o: o.name + " (" + cardinal_names(o.x - pc.x, o.y - pc.y) + ")", targets)))
+        if target_choice is not None:
+            return targets[target_choice]
+        return None
 
 
 def move(thing, dx, dy):
     # move by the given amount if not blocked
     global dungeon_map
-    if not dungeon_map.is_blocked(thing.x + dx, thing.y + dy):
+    target_x = thing.x + dx
+    target_y = thing.y + dy
+    if not dungeon_map.is_blocked(target_x, target_y):
         thing.x += dx
         thing.y += dy
     elif thing is player:
-        message("Ouch! You blunder into a wall.", libtcod.orange)
-        player.fighter.take_damage(random.randint(1, 10), "running into a wall")
+        possible_blockers = dungeon_map.get_stuff(target_x, target_y)
+        blocker = None
+        if len(possible_blockers) > 0:
+            blocker = possible_blockers[0]
+        blocker_name = "a wall"
+        if blocker is not None:
+            blocker_name = str(blocker)
+        message("Ouch! You blunder into " + blocker_name + ".", libtcod.orange)
+        player.fighter.take_damage(random.randint(1, 5), "running into " + blocker_name)
 
 
 def pick_up(item):
@@ -154,18 +177,6 @@ def use(item):
     else:
         if item.use_function() != 'cancelled':
             inventory.remove(item.owner)  # destroy after use, unless it was cancelled for some reason
-
-
-def attack(attacker, target):
-    # a simple formula for attack damage
-    damage = attacker.fighter.power - target.fighter.defense
-
-    if damage > 0:
-        # make the target take some damage
-        message(attacker.name.capitalize() + ' attacks ' + target.name + '.')
-        target.fighter.take_damage(damage)
-    else:
-        message(attacker.name.capitalize() + ' attacks ' + target.name + ' but misses.')
 
 
 class Equipment:
@@ -347,7 +358,7 @@ def text_entry(text, width=50):
         window.print(0, text_height + 2, user_input)
 
 
-def menu(header, options, width, y_adjust=0):
+def menu(header, options, width=26, y_adjust=0):
     if len(options) > 26: raise ValueError('Cannot have a menu with more than 26 options.')
 
     # calculate total height for the header (after auto-wrap) and one line per option
@@ -445,6 +456,13 @@ def handle_keys():
             # test for other keys
             key_char = chr(key.c)
 
+            if key_char == 'a':
+                target = attack_menu(player)
+                if target:
+                    for msg in player.fighter.attack(player, target):
+                        as_args = msg.as_args()
+                        message(*as_args)
+
             if key_char == 'g':
                 # pick up an item
                 for object in dungeon_map.objects:  # look for an item in the player's tile
@@ -503,11 +521,12 @@ def handle_keys():
 def show_help():
     msgbox("Controls:\n\n"
            "ARROWS = MOVEMENT\n"
+           "a      = ATTACK\n"
            "i      = INVENTORY\n"
            "c      = CHARACTER SCREEN\n"
            "g      = GET ITEMS\n"
            "d      = DROP ITEMS\n"
-           "l      = LOOK (MOUSE)"
+           "l      = LOOK (MOUSE)\n"
            "<      = GO UP\n"
            ">      = GO DOWN\n"
            "?      = THIS MESSAGE")
@@ -596,7 +615,7 @@ def tombstone():
     tombstone_lines.append("Dungeon Level: " + str(death.floor.dungeon_level))
     tombstone_lines.append("")
     tombstone_lines = tombstone_lines + textwrap.wrap(death.epitath, grave_width)
-    for i in range(0, 5):
+    for i in range(0, MSG_HEIGHT + 1):
         tombstone_lines.append("")
     for line in tombstone_lines:
         death_screen.print(x_coord, y_coord, line, libtcod.white, alignment=libtcod.CENTER)
@@ -644,12 +663,11 @@ def new_game():
 
     inventory = []
     dungeon_level = 1
-    # create object representing the player
+
+    # player
     fighter_component = Fighter(hp=10, defense=1, power=2, xp=0, death_function=player_death)
-
     player = Character(0, 0, '@', name, libtcod.white, fighter=fighter_component, inventory=inventory)
-
-    equipment_component = Equipment(slot='right hand', power_bonus=1)
+    equipment_component = Equipment(slot='right hand', power_bonus=2)
     obj = Object(0, 0, '-', 'rolled-up newspaper', libtcod.light_grey, equipment=equipment_component)
     inventory.append(obj)
     equipment_component.equip()
@@ -673,7 +691,11 @@ def new_game():
 
     game_msgs = []
     message("Go, " + player.name + "! Recover the Golden Pigeon of Nyan!", libtcod.white)
-    # main loop
+    message("Press '?' for help", libtcod.grey)
+    main_loop(dungeon_map, game)
+
+
+def main_loop(dungeon_map, game):
     while not libtcod.console_is_window_closed():
 
         # render the screen

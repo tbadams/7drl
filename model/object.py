@@ -1,12 +1,13 @@
 import tcod as libtcod
 import random
 from model.item import Item
+from enum import Enum, auto, IntEnum
 
 
 class Object:
     # this is a generic object: the player, a monster, an item, the stairs...
     # it's always represented by a character on screen.
-    def __init__(self, x, y, char, name, color, blocks=False, item=None, equipment=None, always_visible=False):
+    def __init__(self, x, y, char, name, color, blocks=False, item=None, equipment=None, always_visible=False, fighter=None):
         self.name = name
         self.blocks = blocks
         self.x = x
@@ -15,6 +16,7 @@ class Object:
         self.color = color
         self.item = item
         self.always_visible = always_visible
+        self.fighter = fighter
         if self.item:  # let the Item component know who owns it
             self.item.owner = self
 
@@ -44,3 +46,17 @@ class Object:
     def clear(self, con):
         # erase the character that represents this object
         libtcod.console_put_char(con, self.x, self.y, ' ', libtcod.BKGND_NONE)
+
+    def layer(self):
+        if self.fighter:
+            return Layer.CHARACTER
+        if self.item:
+            return Layer.ITEM
+        return Layer.TRASH
+
+
+class Layer(IntEnum):
+    TILE = auto()
+    TRASH = auto()
+    ITEM = auto()
+    CHARACTER = auto()

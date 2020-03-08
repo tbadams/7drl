@@ -7,7 +7,7 @@ import random
 def random_choice_index(chances):  # choose one option from list of chances, returning its index
     # the dice will land on some number between 1 and the sum of the chances
     # dice = libtcod.random_get_int(None, 1, sum(chances))
-    return chances[random.randint(0, len(chances))]
+    return chances[random.randint(0, len(chances) -1)]
 
 
 def random_choice(chances_dict):
