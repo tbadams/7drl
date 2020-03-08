@@ -321,8 +321,8 @@ def message(new_msg, color=libtcod.white):
         game_msgs.append((line, color))
 
 
-def msgbox(text, width=50):
-    menu(text, [], width)  # use menu() as a sort of "message box"
+def msgbox(text, width=50, wait_for_key=True):
+    menu(text, [], width, wait_for_key=wait_for_key)  # use menu() as a sort of "message box"
 
 
 def text_entry(text, width=50):
@@ -359,7 +359,7 @@ def text_entry(text, width=50):
         window.print(0, text_height + 2, user_input)
 
 
-def menu(header, options, width=26, y_adjust=0):
+def menu(header, options, width=26, y_adjust=0, wait_for_key=True):
     if len(options) > 26: raise ValueError('Cannot have a menu with more than 26 options.')
 
     # calculate total height for the header (after auto-wrap) and one line per option
@@ -388,14 +388,16 @@ def menu(header, options, width=26, y_adjust=0):
 
     # present the root console to the player and wait for a key-press
     libtcod.console_flush()
-    key = libtcod.console_wait_for_keypress(True)
+    if wait_for_key:
+        key = libtcod.console_wait_for_keypress(True)
 
-    if key.vk == libtcod.KEY_ENTER and key.lalt:  # (special case) Alt+Enter: toggle fullscreen
-        libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
+        if key.vk == libtcod.KEY_ENTER and key.lalt:  # (special case) Alt+Enter: toggle fullscreen
+            libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
 
-    # convert the ASCII code to an index; if it corresponds to an option, return it
-    index = key.c - ord('a')
-    if index >= 0 and index < len(options): return index
+        # convert the ASCII code to an index; if it corresponds to an option, return it
+        index = key.c - ord('a')
+        if 0 <= index < len(options):
+            return index
     return None
 
 
@@ -494,7 +496,6 @@ def handle_keys():
                         return STRING_ACTION
                 return STRING_NO_ACTION
 
-
             if key_char == 'i':
                 # show the inventory; if an item is selected, use it
                 chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel.\n')
@@ -534,6 +535,8 @@ def handle_keys():
                 else:
                     message("You can't go down on that.", libtcod.white)
                     return STRING_NO_ACTION
+            if key_char == '.' and not key.shift:
+                return STRING_ACTION  # wait
 
             if key_char == ',' and key.shift:  # <
                 if dungeon_map.stairs_up.x == player.x and dungeon_map.stairs_up.y == player.y:
@@ -568,6 +571,7 @@ def show_help():
            "l      = LOOK (MOUSE)\n"
            "<      = GO UP\n"
            ">      = GO DOWN\n"
+           ".      = NO ACTION"
            "?      = THIS MESSAGE")
 
 
@@ -675,6 +679,7 @@ def tombstone():
 
 def show_scores():
     root.clear(bg=libtcod.black)
+    msgbox("LOADING...", 10, False)
     x_coord = 1
     y_start = 0
     rank = 1
@@ -683,7 +688,7 @@ def show_scores():
         y_coord = rank + y_start
         num_txt = pad(str(rank) + ". ", 5)
         score_txt = pad(str(dead_person.death.game.score) + "   ", 8)
-        name_txt = pad(dead_person.name + "   ", 24)
+        name_txt = pad(dead_person.name + "   ", 18)
         epitath_txt = pad(dead_person.death.epitath,
                           SCREEN_WIDTH - x_coord - len(num_txt) - len(score_txt) - len(name_txt))
         root.print(x_coord, y_coord, num_txt + score_txt + name_txt + epitath_txt, libtcod.white)
@@ -756,11 +761,17 @@ def main_loop(dungeon_map, game):
             # npc turns
             for entity in dungeon_map.objects:
                 if entity.ai:
-                    enemy_turn_results = entity.ai.take_turn( player, fov_map, dungeon_map)
+                    enemy_turn_results = entity.ai.take_turn(player, fov_map, dungeon_map)
                     for result in enemy_turn_results:
                         message(*result.as_args())
         else:
             print("defer turn")
+
+
+def print_title(img):
+    root.clear(fg=libtcod.white, bg=libtcod.white)
+    libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 2)
+    root.print(0, SCREEN_HEIGHT - 1, "By Dogsonofawolf", libtcod.black, libtcod.white)
 
 
 #############################################
@@ -774,22 +785,21 @@ panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 screen = Screen.MAIN_MENU
 while not libtcod.console_is_window_closed():
     if screen == Screen.MAIN_MENU:
-        root.clear(fg=libtcod.white, bg=libtcod.white)
-        con.clear(bg=libtcod.black)
         img = libtcod.image_load('gidSmall.png')
-        libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 2)
+        print_title(img)
         title_text = "GUESS I'LL DIE"
         x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))
-        y = SCREEN_HEIGHT - 17
+        y = SCREEN_HEIGHT - 18
+        con.clear(bg=libtcod.black)
         con.print(x, y, title_text, libtcod.white, libtcod.black, libtcod.BKGND_OVERLAY)
         con.blit(root, x - 1, y - 1, x - 1, y - 1, len(title_text) + 2, 3, bg_alpha=0.7)
-        root.print(0, SCREEN_HEIGHT - 1, "By Dogsonofawolf", libtcod.black, libtcod.white)
         libtcod.console_flush(clear_color=libtcod.white)
         key = libtcod.console_wait_for_keypress(True)
         con.clear(bg=libtcod.black)
+        print_title(img)
 
         # create an off-screen console that represents the menu's window
-        choice = menu("\n " + title_text + "\n", ['NEW GAME', 'SCORES', 'QUIT'], 16, 11)
+        choice = menu("\n " + title_text + "\n", ['NEW GAME', 'SCORES', 'QUIT'], 16, 10)
         if choice is 0:
             screen = Screen.GAME
         elif choice is 1:
