@@ -86,6 +86,7 @@ class Character(Object):
             msgs = [Message(self.name + "slams into " + blocker_name + ".", libtcod.orange)]
             msgs.extend(self.fighter.take_damage(random.randint(1, 5), "running into " + blocker_name))
             return msgs
+        return []
 
     def distance(self, x, y):
         return math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
@@ -186,7 +187,8 @@ class Fighter:
                 if function is not None:
                     msg = function(self.owner, death_text)
                     self.death_function = None # you can only die once
-                    return [msg]
+                    if msg:
+                        return [msg]
         return []
 
     def heal(self, amount):
@@ -205,7 +207,7 @@ class Fighter:
         if damage > 0:
             # make the target take some damage
             msgs = [Message(attacker.name.capitalize() + ' attacks ' + target.name + '.', libtcod.yellow)]
-            msgs.extend(target.fighter.take_damage(damage))
+            msgs.extend(target.fighter.take_damage(damage, "killed by " + str(attacker)))
             return msgs
         else:
             return [Message(attacker.name.capitalize() + ' attacks ' + target.name + ' but misses.', libtcod.yellow)]
@@ -346,7 +348,7 @@ templates = [MT("orc", 'O', libtcod.dark_green),
 
 def make_enemy(x, y, floor):
     template = random_choice_index(templates)
-    fighter_component = Fighter(hp=20, defense=0, power=2, xp=35)
+    fighter_component = Fighter(hp=10, defense=0, power=2, xp=35)
     ai_component = BasicMonster()
     enemy = Character(x, y, fighter=fighter_component, *template.to_args(), ai=ai_component)
     return enemy

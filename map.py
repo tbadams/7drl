@@ -2,6 +2,7 @@ import tcod as libtcod
 from util import random_choice
 from model.object import Object
 from model.character import make_enemy
+from model.item import Item
 
 STAIRS_UP_NAME = 'stairs up'
 STAIRS_DOWN_NAME = 'stairs down'
@@ -126,13 +127,13 @@ def place_objects(room, dungeon_level):
     #     # this is where we decide the chance of each monster or item appearing.
     #
     #     # maximum number of monsters per room
-    max_monsters = from_dungeon_level([[2, 1], [3, 4], [5, 6]], dungeon_level.dungeon_level)
+    max_monsters = from_dungeon_level([[1, 1], [2, 4], [3, 6]], dungeon_level.dungeon_level)
     #
     #     # chance of each monster
     #     monster_chances = {'orc': 80, 'troll': from_dungeon_level([[15, 3], [30, 5], [60, 7]])}
     #
     #     # maximum number of items per room
-    max_items = from_dungeon_level([[1, 1], [2, 4]], dungeon_level.dungeon_level)
+    max_items = from_dungeon_level([[2, 1], [2, 4]], dungeon_level.dungeon_level)
     #
     #     # chance of each item (by default they have a chance of 0 at level 1, which then goes up)
     #     item_chances = {'heal': 35,
@@ -155,55 +156,56 @@ def place_objects(room, dungeon_level):
             mook = make_enemy(x, y, dungeon_level)
             dungeon_level.objects.append(mook)
 
-
-#             choice = random_choice(monster_chances)
-#             if choice == 'orc':
-#                 # create an orc
-#                 fighter_component = Fighter(hp=20, defense=0, power=4, xp=35)
-#                 ai_component = BasicMonster()
-#
-#                 monster = Object(x, y, 'o', 'orc', libtcod.desaturated_green,
-#                                  blocks=True, fighter=fighter_component, ai=ai_component)
-#
-#             elif choice == 'troll':
-#                 # create a troll
-#                 fighter_component = Fighter(hp=30, defense=2, power=8, xp=100)
-#                 ai_component = BasicMonster()
-#
-#                 monster = Character(x, y, 'T', 'troll', libtcod.darker_green,
-#                                     blocks=True, fighter=fighter_component, ai=ai_component)
-#
-#             objects.append(monster)
-#
-#     # choose random number of items
+    #             choice = random_choice(monster_chances)
+    #             if choice == 'orc':
+    #                 # create an orc
+    #                 fighter_component = Fighter(hp=20, defense=0, power=4, xp=35)
+    #                 ai_component = BasicMonster()
+    #
+    #                 monster = Object(x, y, 'o', 'orc', libtcod.desaturated_green,
+    #                                  blocks=True, fighter=fighter_component, ai=ai_component)
+    #
+    #             elif choice == 'troll':
+    #                 # create a troll
+    #                 fighter_component = Fighter(hp=30, defense=2, power=8, xp=100)
+    #                 ai_component = BasicMonster()
+    #
+    #                 monster = Character(x, y, 'T', 'troll', libtcod.darker_green,
+    #                                     blocks=True, fighter=fighter_component, ai=ai_component)
+    #
+    #             objects.append(monster)
+    #
+    #     # choose random number of items
     num_items = libtcod.random_get_int(None, 0, max_items)
-#
+    #
     for i in range(num_items):
         # choose random spot for this item
         x = libtcod.random_get_int(0, room.x1 + 1, room.x2 - 1)
         y = libtcod.random_get_int(0, room.y1 + 1, room.y2 - 1)
-#
-#         # only place it if the tile is not blocked
-#         if not is_blocked(x, y, objects):
-#             choice = random_choice(item_chances)
-#             # if choice == 'heal':
-#             #     # create a healing potion
-#             #     item_component = Item(use_function=cast_heal)
-#             #     item = Object(x, y, '!', 'healing potion', libtcod.violet, item=item_component)
-#
-#             if choice == 'sword':
-#                 # create a sword
-#                 equipment_component = Equipment(slot='right hand', power_bonus=3)
-#                 item = Object(x, y, '/', 'sword', libtcod.sky, equipment=equipment_component)
-#
-#             elif choice == 'shield':
-#                 # create a shield
-#                 equipment_component = Equipment(slot='left hand', defense_bonus=1)
-#                 item = Object(x, y, '[', 'shield', libtcod.darker_orange, equipment=equipment_component)
-#
-#             objects.append(item)
-#             item.send_to_back()  # items appear below other objects
-#             item.always_visible = True  # items are visible even out-of-FOV, if in an explored area
+        #
+        # only place it if the tile is not blocked
+        if not dungeon_level.is_blocked(x, y):
+            # choice = random_choice(item_chances)
+            # if choice == 'heal':
+            #     # create a healing potion
+            item_component = Item()
+            item_component.use_function = item_component.heal
+            item = Object(x, y, '!', 'little a salami', libtcod.darker_crimson, item=item_component)
+        #
+        #             if choice == 'sword':
+        #                 # create a sword
+        #                 equipment_component = Equipment(slot='right hand', power_bonus=3)
+        #                 item = Object(x, y, '/', 'sword', libtcod.sky, equipment=equipment_component)
+        #
+        #             elif choice == 'shield':
+        #                 # create a shield
+        #                 equipment_component = Equipment(slot='left hand', defense_bonus=1)
+        #                 item = Object(x, y, '[', 'shield', libtcod.darker_orange, equipment=equipment_component)
+        #
+            dungeon_level.objects.append(item)
+            # item.send_to_back()  # items appear below other objects
+            item.always_visible = True  # items are visible even out-of-FOV, if in an explored area
+
 
 # Map generation
 

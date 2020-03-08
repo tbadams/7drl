@@ -146,7 +146,7 @@ def pick_up(item):
     else:
         inventory.append(item.owner)
         dungeon_map.objects.remove(item.owner)
-        message('You picked up a ' + item.owner.name + '!', libtcod.green)
+        message('You picked up ' + item.owner.name + '.', libtcod.white)
 
         # special case: automatically equip, if the corresponding equipment slot is unused
         equipment = item.owner.equipment
@@ -169,6 +169,7 @@ def drop(item):
 
 
 def use(item):
+    global player
     # special case: if the object has the Equipment component, the "use" action is to equip/dequip
     if item.owner.equipment:
         item.owner.equipment.toggle_equip()
@@ -178,8 +179,11 @@ def use(item):
     if item.use_function is None:
         message('The ' + item.owner.name + ' cannot be used.')
     else:
-        if item.use_function() != 'cancelled':
+        result = item.use_function(player)
+        if result != 'cancelled':
             inventory.remove(item.owner)  # destroy after use, unless it was cancelled for some reason
+            for msg in result:
+                message(*msg.as_args())
 
 
 class Equipment:
@@ -504,6 +508,7 @@ def handle_keys():
                 chosen_item = inventory_menu('Use item:\n')
                 if chosen_item is not None:
                     use(chosen_item)
+                    return STRING_ACTION
                 else:
                     return STRING_NO_ACTION
 
@@ -512,6 +517,7 @@ def handle_keys():
                 chosen_item = inventory_menu('Drop item:\n')
                 if chosen_item is not None:
                     drop(chosen_item)
+                    return STRING_ACTION
                 else:
                     return STRING_NO_ACTION
 
@@ -535,6 +541,7 @@ def handle_keys():
                 # go down stairs, if the player is on them
                 if dungeon_map.stairs_down.x == player.x and dungeon_map.stairs_down.y == player.y:
                     next_level()
+                    return STRING_ACTION
                 else:
                     message("You can't go down on that.", libtcod.white)
                     return STRING_NO_ACTION
@@ -546,6 +553,7 @@ def handle_keys():
                     message("You attempt to climb the stairs but the effort destroys your already frail body.",
                             libtcod.yellow)
                     player.fighter.take_damage(100, "collapsed from over-exertion")
+                    return STRING_ACTION
                 else:
                     message("You can't get high here.", libtcod.white)
                     return STRING_NO_ACTION
@@ -587,7 +595,7 @@ def next_level():
     next_dlevel = dungeon_map.dungeon_level + 1
     if random.random() < 0.1:
         message("You tumble down the stairs.", libtcod.orange)
-        player.fighter.take_damage(random.randint(1, 4))
+        player.fighter.take_damage(random.randint(1, 4), "fell down the stairs")
     else:
         message('You manage to avoid falling down the stairs.', libtcod.white)
     dungeon_map = make_map(MAP_WIDTH, MAP_HEIGHT, player)
