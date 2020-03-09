@@ -17,7 +17,7 @@ from util import pad
 
 # print(sys.path)
 
-VERSION = "1.01"
+VERSION = "1.1.0"
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -681,7 +681,8 @@ def tombstone():
     ]
     grave_width = 16
     x_coord = int(SCREEN_WIDTH / 2)
-    y_coord = 1
+    y_start = 10
+    y_coord = y_start
     top_lines = len(tombstone_lines)
     tombstone_lines.append(player.name)
     tombstone_lines.append("Score: " + str(death.game.score))
@@ -694,7 +695,7 @@ def tombstone():
         death_screen.print(x_coord, y_coord, line, libtcod.white, alignment=libtcod.CENTER)
         y_coord += 1
 
-    for i in range(top_lines + 1, y_coord):
+    for i in range(top_lines + y_start, y_coord):
         death_screen.print(int((SCREEN_WIDTH / 2) - (grave_width / 2) - 2), i, "|", libtcod.white)
         death_screen.print(int((SCREEN_WIDTH / 2) + (grave_width / 2) + 1), i, "|", libtcod.white)
     bottom = ""
