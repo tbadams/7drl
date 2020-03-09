@@ -11,8 +11,9 @@ from model.character import Character, Fighter
 from model.death import Death
 from model.object import Object
 from util import pad
-import os
-import sys
+
+# import os
+# import sys
 
 # print(sys.path)
 
@@ -370,8 +371,9 @@ def text_entry(text, width=50):
         window.print(0, text_height + 2, user_input)
 
 
-def menu(header, options, width=26, y_adjust=0, wait_for_key=True):
-    if len(options) > 26: raise ValueError('Cannot have a menu with more than 26 options.')
+def menu(header, options, width=50, y_adjust=0, wait_for_key=True):
+    if len(options) > 26:
+        raise ValueError('Cannot have a menu with more than 26 options.')
 
     # calculate total height for the header (after auto-wrap) and one line per option
     header_height = con.get_height_rect(0, 0, width, SCREEN_HEIGHT, header)
@@ -387,6 +389,7 @@ def menu(header, options, width=26, y_adjust=0, wait_for_key=True):
     y = header_height
     letter_index = ord('a')
     for option_text in options:
+
         text = '(' + chr(letter_index) + ') ' + option_text
         window.print(0, y, text)
         y += 1
@@ -750,16 +753,16 @@ def new_game():
     # global variables
     fov_recompute = True
     game_state = GS_PLAYING
-    player_action = None
     game = GameState()
 
     game_msgs = []
     message("Go, " + player.name + "! Recover the Golden Pigeon of Nyan!", libtcod.white)
     message("Press '?' for help", libtcod.grey)
-    main_loop(dungeon_map, game)
+    main_loop()
 
 
-def main_loop(dungeon_map, game):
+def main_loop():
+    global dungeon_map, game
     while not libtcod.console_is_window_closed():
 
         # render the screen
