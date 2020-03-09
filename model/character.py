@@ -9,7 +9,7 @@ from util import random_choice_index
 
 
 def default_death(monster, death_text):
-    death_message = Message('{0} dies.'.format(monster.name.capitalize()), libtcod.orange)
+    death_message = Message('{0} dies.'.format(monster.name.capitalize()), libtcod.red)
 
     monster.char = '%'
     # monster.color = libtcod.dark_red
@@ -23,7 +23,7 @@ def default_death(monster, death_text):
 
 
 class Character(Object):
-    def __init__(self, x, y, char, name, color, fighter, ai=None, inventory=None):
+    def __init__(self, x, y, char, name, color, fighter, ai=None, inventory=None, player=False):
         super().__init__(x, y, char, name, color, True, fighter=fighter)
         if self.fighter:
             fighter.owner = self
@@ -32,6 +32,7 @@ class Character(Object):
         if inventory is None:
             inventory = []
         self.inventory = inventory
+        self.player = player
         self.ai = ai
         if self.ai:
             self.ai.owner = self
@@ -56,7 +57,6 @@ class Character(Object):
         return None
 
     def move_towards(self, target_x, target_y, dungeon_map):
-        game_map = dungeon_map.tiles
         entities = dungeon_map.objects
         dx = target_x - self.x
         dy = target_y - self.y
@@ -188,7 +188,7 @@ class Fighter:
                 function = self.death_function
                 if function is not None:
                     msg = function(self.owner, death_text)
-                    self.death_function = None # you can only die once
+                    self.death_function = None  # you can only die once
                     if msg:
                         return [msg]
         return []
@@ -202,7 +202,7 @@ class Fighter:
     def attack(self, attacker, target):
         # a simple formula for attack damage
         msgs = []
-        attack = random.randint(0,attacker.fighter.power)
+        attack = random.randint(0, attacker.fighter.power)
         defense = random.randint(0, target.fighter.defense)
         damage = attack - defense
 
@@ -212,12 +212,12 @@ class Fighter:
             msgs.extend(target.fighter.take_damage(damage, "killed by " + str(attacker)))
             return msgs
         else:
-            return [Message(attacker.name.capitalize() + ' attacks ' + target.name + ' but misses.', libtcod.yellow)]
-
+            return [Message(attacker.name.capitalize() + ' attacks ' + target.name + ' but misses.', libtcod.white)]
 
     @staticmethod
     def mook():
         return Fighter(hp=10, defense=0, power=2, xp=35)
+
 
 class BasicMonster:
     def take_turn(self, target, fov_map, game_map):
@@ -311,7 +311,7 @@ templates = [MT("orc", 'O', libtcod.dark_green),
              MT("chimera", '&', libtcod.green),
              MT("hydra", 'S', libtcod.light_sea),
              MT("harpy", 'h', libtcod.turquoise),
-             MT("satyr", 'h', libtcod.desaturated_amber),
+             MT("satyr", 'h', libtcod.darkest_crimson),
              MT("griffin", 'G', libtcod.gold),
              MT("amazon", 'A', libtcod.yellow),
              MT("sphinx", 'f', libtcod.gold),
@@ -344,7 +344,8 @@ templates = [MT("orc", 'O', libtcod.dark_green),
              MT("grey", 'g', libtcod.grey),
              MT("gladiator", 'g', libtcod.gold),
              MT("wampa", 'W', libtcod.white),
-             MT("Sue the T-Rex", 'D', libtcod.dark_yellow)
+             MT("Sue the T-Rex", 'D', libtcod.dark_yellow),
+             MT("Professor Oak", 'O', libtcod.white)
              ]
 
 

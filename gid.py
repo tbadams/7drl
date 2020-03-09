@@ -259,9 +259,14 @@ def render_all():
 
     # draw all objects in the list, except the player. we want it to
     # always appear over all other objects! so it's drawn later.
+    cache = {}
     for o in dungeon_map.objects:
         if o != player:
-            o.draw(con, fov_map)
+            coords = o.x, o.y
+            if coords not in cache or cache[coords].layer() <= o.layer():
+                o.draw(con, fov_map)
+                cache[coords] = o
+
     player.draw(con, fov_map)
 
     # blit the contents of "con" to the root console and present it
@@ -578,21 +583,22 @@ def handle_keys():
 
 def show_help():
     msgbox("Controls:\n\n"
-           "ARROWS = NESW MOVEMENT\n"
-           "INSERT = NW\n"
-           "HOME   = NE\n"
-           "END    = SE\n"
-           "DELETE = SW\n"
-           "a      = ATTACK\n"
-           "i      = INVENTORY\n"
-           "c      = CHARACTER SCREEN\n"
-           "g      = GET ITEMS\n"
-           "d      = DROP ITEMS\n"
+           "ARROWS    = NESW MOVEMENT\n"
+           "INSERT    = NW\n"
+           "HOME      = NE\n"
+           "END       = SE\n"
+           "DELETE    = SW\n"
+           "a         = ATTACK\n"
+           "i         = INVENTORY\n"
+           "c         = CHARACTER SCREEN\n"
+           "g         = GET ITEMS\n"
+           "d         = DROP ITEMS\n"
            # "l      = LOOK (MOUSE)\n"
-           "<      = GO UP\n"
-           ">      = GO DOWN\n"
-           ".      = NO ACTION"
-           "?      = THIS MESSAGE")
+           "<         = GO UP\n"
+           ">         = GO DOWN\n"
+           ".         = NO ACTION\n"
+           "?         = THIS MESSAGE\n"
+           "ALT+ENTER = FULL SCREEN\n")
 
 
 def next_level():
@@ -734,9 +740,9 @@ def new_game():
 
     # player
     fighter_component = Fighter(hp=10, defense=1, power=2, xp=0, death_function=player_death)
-    player = Character(0, 0, '@', name, libtcod.white, fighter=fighter_component, inventory=inventory)
+    player = Character(0, 0, '@', name, libtcod.white, fighter=fighter_component, inventory=inventory, player=True)
     equipment_component = Equipment(slot='right hand', power_bonus=2)
-    obj = Object(0, 0, '-', 'rolled-up newspaper', libtcod.light_grey, equipment=equipment_component)
+    obj = Object(0, 0, '/', 'rolled-up newspaper', libtcod.light_grey, equipment=equipment_component)
     inventory.append(obj)
     equipment_component.equip()
     obj.always_visible = True

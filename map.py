@@ -38,7 +38,7 @@ class Floor:
         for o in self.objects:
             if o.x == x and o.y == y:
                 stuff.append(o)
-        stuff.sort(key=lambda thing: thing.layer())
+        stuff.sort(key=lambda thing: thing.layer(), reverse=True)
         return stuff
 
 
@@ -127,7 +127,7 @@ def place_objects(room, dungeon_level):
     #     # this is where we decide the chance of each monster or item appearing.
     #
     #     # maximum number of monsters per room
-    max_monsters = from_dungeon_level([[2, 1], [2, 4], [3, 6]], dungeon_level.dungeon_level)
+    max_monsters = from_dungeon_level([[2, 1], [3, 4], [5, 6]], dungeon_level.dungeon_level)
     #
     #     # chance of each monster
     #     monster_chances = {'orc': 80, 'troll': from_dungeon_level([[15, 3], [30, 5], [60, 7]])}

@@ -29,6 +29,9 @@ class Object:
             # there must be an Item component for the Equipment component to work properly
             self.item = Item()
             self.item.owner = self
+            
+    def __str__(self):
+        return str(self.name)
 
     # def move(self, dx, dy, player, message, objects, is_blocked):
     #     # move by the given amount if not blocked
