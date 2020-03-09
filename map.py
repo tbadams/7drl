@@ -127,13 +127,13 @@ def place_objects(room, dungeon_level):
     #     # this is where we decide the chance of each monster or item appearing.
     #
     #     # maximum number of monsters per room
-    max_monsters = from_dungeon_level([[1, 1], [2, 4], [3, 6]], dungeon_level.dungeon_level)
+    max_monsters = from_dungeon_level([[2, 1], [2, 4], [3, 6]], dungeon_level.dungeon_level)
     #
     #     # chance of each monster
     #     monster_chances = {'orc': 80, 'troll': from_dungeon_level([[15, 3], [30, 5], [60, 7]])}
     #
     #     # maximum number of items per room
-    max_items = from_dungeon_level([[2, 1], [2, 4]], dungeon_level.dungeon_level)
+    max_items = from_dungeon_level([[1, 1], [2, 4]], dungeon_level.dungeon_level)
     #
     #     # chance of each item (by default they have a chance of 0 at level 1, which then goes up)
     #     item_chances = {'heal': 35,

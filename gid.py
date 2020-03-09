@@ -145,10 +145,11 @@ def move(thing, dx, dy):
 
 
 def pick_up(item):
-    global dungeon_map
+    global dungeon_map, player
     # add to the player's inventory and remove from the map
     if len(inventory) >= 26:
-        message('Your inventory is full, cannot pick up ' + item.owner.name + '.', libtcod.red)
+        message('You attempt to pick up ' + item.owner.name + ', but are crushed under the weight of your load.', libtcod.orange)
+        player.take_damage(111, "crushed to death")
     else:
         inventory.append(item.owner)
         dungeon_map.objects.remove(item.owner)
