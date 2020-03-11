@@ -1,3 +1,8 @@
+import random
+import shelve
+import textwrap
+from enum import Enum, auto
+
 import tcod as libtcod
 import tcod.event
 import textwrap
@@ -8,9 +13,16 @@ from map import make_map
 from model.object import Object
 from model.death import Death
 from util import pad
-import shelve
-from model.monsters import make_enemy, display_test
 from model.character import Character, Fighter
+
+import os
+import sys
+
+# print(sys.path)
+
+VERSION = "1.1.1"
+
+ASSET_DIR = "assets"
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -81,6 +93,14 @@ game_state = None
 fov_map = None
 game = None
 dungeon_map = None
+
+bundle_dir = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    bundle_dir = sys._MEIPASS
+
+
+def get_asset_filepath(filename):
+    return bundle_dir + os.sep + ASSET_DIR + os.sep + filename
 
 
 class Screen(Enum):
@@ -697,7 +717,7 @@ def new_game():
 #############################################
 # Initialization & Main Loop
 #############################################
-libtcod.console_set_custom_font('arial10x10.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
+libtcod.console_set_custom_font(get_asset_filepath('arial10x10.png'), libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
 root = libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, "guess I'll die", False)
 msg_panel = libtcod.console_new(SCREEN_WIDTH, MSG_HEIGHT)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -707,7 +727,7 @@ while not libtcod.console_is_window_closed():
     if screen == Screen.MAIN_MENU:
         root.clear(fg=libtcod.white, bg=libtcod.white)
         con.clear(bg=libtcod.black)
-        img = libtcod.image_load('gidSmall.png')
+        img = libtcod.image_load(get_asset_filepath('gidSmall.png'))
         libtcod.image_blit_2x(img, 0, int((SCREEN_WIDTH - int(img.width / 2)) / 2), 2)
         title_text = "GUESS I'LL DIE"
         x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))
