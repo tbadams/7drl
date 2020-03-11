@@ -12,12 +12,14 @@ from model.death import Death
 from model.object import Object
 from util import pad
 
-# import os
-# import sys
+import os
+import sys
 
 # print(sys.path)
 
 VERSION = "1.1.0"
+
+ASSET_DIR = "assets"
 
 # actual size of the window
 SCREEN_WIDTH = 80
@@ -90,6 +92,14 @@ fov_map = None
 game = None
 dungeon_map = None
 
+bundle_dir = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    bundle_dir = sys._MEIPASS
+
+
+def get_asset_filepath(filename):
+    return bundle_dir + os.sep + ASSET_DIR + os.sep + filename
+
 
 class Screen(Enum):
     MAIN_MENU = auto()
@@ -148,7 +158,8 @@ def pick_up(item):
     global dungeon_map, player
     # add to the player's inventory and remove from the map
     if len(inventory) >= 26:
-        message('You attempt to pick up ' + item.owner.name + ', but are crushed under the weight of your load.', libtcod.orange)
+        message('You attempt to pick up ' + item.owner.name + ', but are crushed under the weight of your load.',
+                libtcod.orange)
         player.take_damage(111, "crushed to death")
     else:
         inventory.append(item.owner)
@@ -395,7 +406,6 @@ def menu(header, options, width=50, y_adjust=0, wait_for_key=True):
     y = header_height
     letter_index = ord('a')
     for option_text in options:
-
         text = '(' + chr(letter_index) + ') ' + option_text
         window.print(0, y, text)
         y += 1
@@ -810,7 +820,7 @@ def print_title(img):
 #############################################
 # Initialization & Main Loop
 #############################################
-libtcod.console_set_custom_font('arial10x10.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
+libtcod.console_set_custom_font(get_asset_filepath('arial10x10.png'), libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
 root = libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, "guess I'll die", False)
 msg_panel = libtcod.console_new(SCREEN_WIDTH, MSG_HEIGHT)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -818,7 +828,7 @@ panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 screen = Screen.MAIN_MENU
 while not libtcod.console_is_window_closed():
     if screen == Screen.MAIN_MENU:
-        img = libtcod.image_load('gidSmall.png')
+        img = libtcod.image_load(get_asset_filepath('gidSmall.png'))
         print_title(img)
         title_text = "GUESS I'LL DIE"
         x = int(SCREEN_WIDTH / 2) - (int(len(title_text) / 2))

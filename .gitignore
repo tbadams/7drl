@@ -165,3 +165,10 @@ pip-log.txt
 ###########
 ## Project Files
 ###########
+
+scores.json
+gid.spec
+.idea
+venv
+:.spec
+
